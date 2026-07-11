@@ -20855,8 +20855,10 @@ function draftToPerson(draft, opts = {}) {
 //
 //   • Native (iOS/Android via Capacitor): the system contact picker (no
 //     permission prompt) OR a full address-book import (with permission).
-//   • Web: not available (iOS Safari has no contacts API) — the caller falls
-//     back to the vCard (.vcf) file flow.
+//   • Web (iOS Safari 14.5+/Chrome Android): the Contact Picker API —
+//     user-mediated multi-select, name/email/tel only.
+//   • Older web: the vCard (.vcf) file flow (also the richest: birthdays,
+//     org, photos survive only through .vcf on the web).
 //
 // Both native paths normalize to the SAME draft shape parseVcf() returns —
 // { name, email, phone, org, title, birthday, photo } — so the review screen
@@ -20923,6 +20925,49 @@ function normalizeNative(c) {
  * all-contacts permission is required. The privacy-friendliest path.
  * Returns an array of drafts (one or more depending on the OS picker).
  */
+/**
+ * True when the BROWSER exposes the Contact Picker API — iOS Safari 14.5+
+ * and Chrome on Android. Fully user-mediated: the OS shows its own picker,
+ * the user selects, and the page receives only those entries. No standing
+ * permission is granted; nothing is readable without a fresh pick.
+ */
+function contactsWebPickerAvailable() {
+  return typeof navigator !== 'undefined' && 'contacts' in navigator && navigator.contacts && typeof navigator.contacts.select === 'function';
+}
+
+/**
+ * Open the OS contact picker from the web app. Returns draft rows in the
+ * same shape as the vCard path (name/email/phone; the web API exposes no
+ * birthday/org/photo — the .vcf route stays the full-fidelity import).
+ */
+async function pickWebContacts() {
+  if (!contactsWebPickerAvailable()) {
+    throw new Error('Contact picking is not available in this browser.');
+  }
+  let props = ['name', 'email', 'tel'];
+  try {
+    if (typeof navigator.contacts.getProperties === 'function') {
+      const avail = await navigator.contacts.getProperties();
+      const filtered = props.filter(p => avail.includes(p));
+      if (filtered.length) props = filtered;
+    }
+  } catch {
+    /* keep defaults */
+  }
+  const picked = await navigator.contacts.select(props, {
+    multiple: true
+  });
+  const first = v => Array.isArray(v) ? v[0] || '' : v || '';
+  return (picked || []).map(c => ({
+    name: String(first(c.name)).trim(),
+    email: String(first(c.email)).trim(),
+    phone: String(first(c.tel)).trim(),
+    org: '',
+    title: '',
+    birthday: '',
+    photo: null
+  })).filter(c => c.name);
+}
 async function pickNativeContacts() {
   const p = contactsPlugin();
   if (!p || typeof p.pickContact !== 'function') {
@@ -20993,6 +21038,7 @@ function ContactsImport({
   const [busy, setBusy] = reactExports.useState(false);
   const [error, setError] = reactExports.useState('');
   const nativeAvailable = contactsNativeAvailable();
+  const webPickerAvailable = !nativeAvailable && contactsWebPickerAvailable();
 
   // Already-imported names guard us against creating duplicates.
   const existingNames = reactExports.useMemo(() => new Set(people.map(p => (p.name || '').trim().toLowerCase()).filter(Boolean)), [people]);
@@ -21090,6 +21136,25 @@ function ContactsImport({
       setBusy(false);
     }
   }
+
+  // Web Contact Picker (iOS Safari 14.5+/Chrome Android) — the OS shows its
+  // own picker; we receive only what the user selects. Safari throws on
+  // cancel, which isn't an error worth showing.
+  async function handleWebPick() {
+    setBusy(true);
+    setError('');
+    try {
+      const picked = await pickWebContacts();
+      if (picked.length) acceptParsed(picked, 'Selected contacts');
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/abort|cancel|denied/i.test(msg)) {
+        setError(msg || 'Could not open the contact picker.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
   function toggle(i) {
     setSelected(s => {
       const n = new Set(s);
@@ -21164,6 +21229,48 @@ function ContactsImport({
             marginTop: 2
           },
           children: "or import a .vcf file"
+        })]
+      }) : webPickerAvailable ?
+      /*#__PURE__*/
+      // Modern mobile browser: the OS contact picker works right here.
+      // (.vcf stays available — it's the only web path that carries
+      // birthdays and photos along.)
+      jsxRuntimeExports.jsxs("div", {
+        style: {
+          marginTop: 22,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        },
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx(Button, {
+          onClick: handleWebPick,
+          disabled: busy,
+          style: {
+            width: '100%'
+          },
+          children: busy ? 'Opening…' : 'Choose from your contacts'
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          style: {
+            fontFamily: theme.fonts.sans,
+            fontSize: 12,
+            color: theme.colors.ink3,
+            textAlign: 'center',
+            lineHeight: 1.5
+          },
+          children: "Your phone shows the picker \u2014 only the people you select come across, names, numbers, and emails."
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("button", {
+          onClick: handlePickFile,
+          style: {
+            background: 'transparent',
+            border: 'none',
+            color: theme.colors.ink3,
+            fontFamily: theme.fonts.sans,
+            fontSize: 13,
+            cursor: 'pointer',
+            marginTop: 2,
+            padding: '10px 8px'
+          },
+          children: "or import a .vcf file (brings birthdays and photos too)"
         })]
       }) : /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
