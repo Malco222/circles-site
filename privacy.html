@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy — Circles</title>
+  <meta name="description" content="Circles privacy policy: your relationships live on your device. No account, no analytics, no tracking." />
+  <meta name="theme-color" content="#b8593a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23b8593a' stroke-width='2.6'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23b8593a' stroke-width='2.6'/%3E%3Ccircle cx='16' cy='16' r='2.2' fill='%23b8593a'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --paper: #f4eee2; --card: #fbf8f1; --ink: #2a241c; --ink-2: #574e40;
+      --ink-3: #8c8270; --accent: #b8593a; --rule: rgba(42, 36, 28, 0.12);
+      --serif: "Fraunces", Georgia, "Times New Roman", serif;
+      --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink);
+      font: 16px/1.65 -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 48px 24px 80px; }
+    .crumb { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--ink-3); text-decoration: none; }
+    .crumb:hover { color: var(--accent); }
+    h1 { font-family: var(--serif); font-weight: 500; font-size: 40px;
+      letter-spacing: -0.02em; line-height: 1.1; margin: 18px 0 6px; }
+    .meta { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--ink-3); margin-bottom: 34px; }
+    h2 { font-family: var(--serif); font-weight: 500; font-size: 24px;
+      letter-spacing: -0.01em; margin: 40px 0 10px; }
+    p, li { color: var(--ink-2); }
+    strong { color: var(--ink); }
+    .lead { font-family: var(--serif); font-style: italic; font-size: 19px;
+      color: var(--ink-2); }
+    .card { background: var(--card); border: 1px solid var(--rule);
+      border-radius: 14px; padding: 18px 20px; margin: 22px 0; }
+    .card ul { margin: 0; padding-left: 20px; }
+    .card li + li { margin-top: 8px; }
+    a { color: var(--accent); }
+    footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--rule);
+      font-size: 13px; color: var(--ink-3); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="crumb" href="./index.html">← Circles</a>
+    <h1>Privacy</h1>
+    <div class="meta">Effective: on publish · Plain words, no legalese</div>
+
+    <p class="lead">Circles is built on one principle: your relationships are
+    yours. Here is exactly what the app does with your information.</p>
+
+    <div class="card">
+      <ul>
+        <li>Everything you put into Circles — people, notes, moments, settings —
+          <strong>lives on your device</strong>. No account, no sign-up, no
+          Circles server storing your data.</li>
+        <li>We collect <strong>nothing</strong>. No analytics, no ad
+          identifiers, no tracking.</li>
+        <li>The few features that touch the network are <strong>optional,
+          obvious, and under your control</strong> — all of them are listed
+          below.</li>
+      </ul>
+    </div>
+
+    <h2>What stays on your device</h2>
+    <p>Your people directory, notes, logged moments, open loops, circles,
+    cadences, photos, and settings are stored only in the app's private storage
+    on your device — the app's automatic restore points too. We cannot see,
+    read, or recover any of it. That is a design decision, not a limitation.</p>
+    <p>Because your data lives on your device, it is included in your normal
+    iCloud or computer backup if you have that enabled — governed by Apple's
+    privacy terms, not ours.</p>
+
+    <h2>The optional features that use the network</h2>
+    <p><strong>Calendar (optional).</strong> If you paste a calendar (.ics)
+    link, the app fetches that calendar to show who you're seeing and quietly
+    log past meetings. Its contents are processed and stored on your device.
+    Remove the link in Settings to stop all calendar fetching.</p>
+    <p><strong>AI note sorting (optional).</strong> When enabled, the text of a
+    note you're parsing — plus the names and locations in your directory, so
+    the AI can match the right person — is sent to the AI provider (Anthropic)
+    for processing, and is not stored by Circles anywhere off your device. You
+    always review the result before anything saves. Turn it off in Settings →
+    Privacy &amp; Security and notes are sorted entirely on your device.</p>
+    <p><strong>AI message drafts (optional).</strong> Asking for a draft sends
+    that person's context from your notes to the AI provider once, to write the
+    draft. You edit and send it yourself — Circles never sends messages on your
+    behalf.</p>
+    <p>That is the complete list. If a feature is not named above, it does not
+    use the network.</p>
+
+    <h2>Face ID and passcode</h2>
+    <p>The optional app lock uses Face ID / Touch ID through Apple's system
+    APIs. Your biometric data never leaves your device's secure hardware and is
+    never available to Circles. The fallback passcode is stored only as a
+    salted cryptographic hash, on your device.</p>
+
+    <h2>Notifications</h2>
+    <p>All reminders — birthdays, nudges, pre-meeting briefs — are generated
+    and scheduled on your device. There is no push server.</p>
+
+    <h2>Your data, your exit</h2>
+    <p><strong>Export</strong> everything as a readable file anytime.
+    <strong>Back up</strong> to your own iCloud Drive with one tap — storage
+    you control, under your Apple ID. <strong>Delete</strong> everything with
+    Settings → Clear all data. Because we hold nothing, there is nothing else
+    to ask us to delete.</p>
+
+    <h2>Children</h2>
+    <p>Circles is not directed at children under 13 and does not knowingly
+    collect information from anyone — including children.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy ever changes, the new version will be posted here with a
+    new effective date. Because the architecture is local-first, a change that
+    sent your data anywhere new would be a major, explicit product change — not
+    a quiet policy edit.</p>
+
+    <footer>Questions: <a href="mailto:brian.malconian@gmail.com">brian.malconian@gmail.com</a></footer>
+  </div>
+</body>
+</html>

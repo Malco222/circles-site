@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- maximum-scale=1 suppresses iOS Safari's auto-zoom when focusing an
+         input; pinch-to-zoom still works (iOS ignores the cap for gestures). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f1e7" />
+    <title>Circles</title>
+
+    <!-- PWA: installable to the home screen. Makes notifications reliable and
+         lets the app run standalone (no browser chrome). -->
+    <!-- Relative paths on purpose: the same bundle must work at the domain
+         root (dev, Capacitor) AND under a subpath (GitHub Pages /app/). -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Circles" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://esm.sh" crossorigin />
+    <!--
+      Almanac type system: Newsreader (display serif), Geist (body sans),
+      JetBrains Mono (uppercase labels / meta).
+    -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+         Theme palettes — the whole UI reads these via var() so we can
+         flip light <-> dark by toggling [data-theme] on <html>.
+         Light is the default (paper almanac); dark is "lamplight".
+         ============================================================ */
+      :root {
+        --c-paper:        #f6f1e7;
+        --c-paper-deep:   #efe7d6;
+        --c-card:         #fbf7ee;
+        --c-ink:          #2a241c;
+        --c-ink2:         #5a4f3f;
+        /* ink3 darkened from #8a7d68 → ~4.6:1 on paper (WCAG AA) while still
+           reading as muted secondary text. */
+        --c-ink3:         #796c57;
+        --c-ink4:         #bfb39a;
+        --c-rule:         rgba(42,36,28,0.12);
+        --c-rule-strong:  rgba(42,36,28,0.22);
+        --c-accent:       #b8593a;
+        --c-accent-ink:   #7a3818;
+        --c-accent-soft:  rgba(184,89,58,0.10);
+        --c-accent-softer:rgba(184,89,58,0.05);
+        --c-amber:        #c98a2c;
+        --c-amber-ink:    #7a5418;
+        --c-success:      #5A7A4F;
+        --c-danger:       #A04A3C;
+        --c-overlay:      rgba(42,36,28,0.45);
+
+        /* Derived tokens (polish pass) */
+        --c-on-accent:     #FFF8F0;
+        --c-accent-hover:  #9F4623;
+        --c-accent-border: rgba(184,89,58,0.45);
+        --c-amber-soft:    rgba(201,138,44,0.12);
+        --c-danger-soft:   rgba(160,74,60,0.10);
+        --c-toast-action:  #e3b569;
+
+        /* Layered, three-pass shadows: specular top hairline + ambient + key
+           light — the embossed-paper card material. Every surface that reads
+           these vars upgrades at once. */
+        --shadow-sm:          inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 2px rgba(42,36,28,0.06);
+        --shadow-md:          inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(42,36,28,0.05), 0 8px 24px rgba(42,36,28,0.10);
+        --shadow-lg:          inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(42,36,28,0.10), 0 18px 40px rgba(42,36,28,0.20);
+        --shadow-card:        inset 0 1px 0 rgba(255,255,255,0.60), 0 1px 2px rgba(42,36,28,0.05), 0 4px 12px rgba(42,36,28,0.08);
+        --shadow-card-raised: inset 0 1px 0 rgba(255,255,255,0.70), 0 2px 6px rgba(42,36,28,0.12), 0 16px 36px rgba(42,36,28,0.22);
+
+        /* Frosted-glass material (nav, command palette, sheets) */
+        --glass-bg:    rgba(251,247,238,0.66);
+        --glass-brd:   rgba(42,36,28,0.14);
+        --glass-edge:  rgba(255,255,255,0.55);
+        --glass-sheet: rgba(251,247,238,0.84);
+        --glass-chip:  rgba(246,241,231,0.72);
+        --paper-veil:  rgba(246,241,231,0.80);
+        --c-selection: rgba(184,89,58,0.22);
+      }
+
+      :root[data-theme="dark"] {
+        /* Deepened toward OLED black — data glows against it (the WHOOP mood) */
+        --c-paper:        #121008;
+        --c-paper-deep:   #0c0a06;
+        --c-card:         #1e1912;
+        --c-ink:          #ece3d2;
+        --c-ink2:         #c2b8a2;
+        --c-ink3:         #8f846e;
+        --c-ink4:         #5f5746;
+        --c-rule:         rgba(236,227,210,0.13);
+        --c-rule-strong:  rgba(236,227,210,0.24);
+        --c-accent:       #d77750;
+        --c-accent-ink:   #eaa888;
+        --c-accent-soft:  rgba(215,119,80,0.18);
+        --c-accent-softer:rgba(215,119,80,0.09);
+        --c-amber:        #d99a3e;
+        --c-amber-ink:    #e8c07a;
+        --c-success:      #84a574;
+        --c-danger:       #cf7363;
+        --c-overlay:      rgba(0,0,0,0.6);
+
+        /* Derived tokens (polish pass) */
+        --c-on-accent:     #FFF8F0;
+        --c-accent-hover:  #e08a66;
+        --c-accent-border: rgba(215,119,80,0.55);
+        --c-amber-soft:    rgba(217,154,62,0.18);
+        --c-danger-soft:   rgba(207,115,99,0.16);
+        --c-toast-action:  #7a5418;
+
+        /* Dark: the Linear-signature rim light on top, black passes below */
+        --shadow-sm:          inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.40);
+        --shadow-md:          inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 8px rgba(0,0,0,0.45);
+        --shadow-lg:          inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 30px rgba(0,0,0,0.55);
+        --shadow-card:        inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.40), 0 4px 14px rgba(0,0,0,0.42);
+        --shadow-card-raised: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 8px rgba(0,0,0,0.50), 0 18px 40px rgba(0,0,0,0.55);
+
+        --glass-bg:    rgba(34,29,21,0.60);
+        --glass-brd:   rgba(236,227,210,0.14);
+        --glass-edge:  rgba(236,227,210,0.08);
+        --glass-sheet: rgba(34,29,21,0.80);
+        --glass-chip:  rgba(23,20,15,0.66);
+        --paper-veil:  rgba(23,20,15,0.80);
+        --c-selection: rgba(215,119,80,0.32);
+      }
+
+      * { box-sizing: border-box; }
+      html, body, #root { margin: 0; padding: 0; height: 100%; min-height: 100%; }
+      body {
+        background: #1a1814;
+        color: #2a241c;
+        font-family: 'Geist', -apple-system, system-ui, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        overflow: hidden;
+      }
+      input, textarea, select, button {
+        font-family: inherit;
+        color: inherit;
+      }
+      button { cursor: pointer; }
+      a { color: inherit; }
+
+      /* ------ Stage: dark warm backdrop with two soft glows ------ */
+      .al-stage {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(800px 600px at 30% 20%, rgba(184,89,58,0.10), transparent 60%),
+          radial-gradient(900px 600px at 75% 80%, rgba(227,181,105,0.06), transparent 60%),
+          #1a1814;
+        overflow: auto;
+        padding: 24px;
+      }
+
+      /* ------ Phone container: bezel-on-desktop, fill-on-mobile ------ */
+      .al-phone {
+        width: 402px;
+        height: 874px;
+        max-height: 100vh;
+        position: relative;
+        background: var(--c-paper);
+        border-radius: 38px;
+        overflow: hidden;
+        transition: background 280ms ease;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,0.06),
+          0 40px 80px rgba(0,0,0,0.45),
+          0 8px 20px rgba(0,0,0,0.30);
+      }
+      /* On phone / narrow viewports: ditch the bezel, fill the screen */
+      @media (max-width: 480px) {
+        .al-stage { padding: 0; background: var(--c-paper); }
+        .al-phone {
+          width: 100vw;
+          height: 100vh;
+          max-height: 100vh;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+
+      /* ------ Utility: hide native scrollbars inside the phone ------ */
+      .al-scroll::-webkit-scrollbar { display: none; }
+      .al-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* ------ Animations from the prototype ------ */
+      @keyframes al-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.06); opacity: 0.92; }
+      }
+      @keyframes al-eq {
+        0%, 100% { height: 6px; }
+        50% { height: 28px; }
+      }
+      @keyframes al-fade {
+        from { opacity: 0; transform: translateY(4px); }
+        /* rest at `none` (not translateY(0)) so the element isn't left as a
+           containing block for position:fixed descendants like modals */
+        to   { opacity: 1; transform: none; }
+      }
+      /* Shimmer sweep for the voice-capture live indicator. A terracotta
+         hot-spot rides back and forth across a 2px track. */
+      @keyframes al-shimmer {
+        0%   { background-position: -120% 50%; }
+        100% { background-position:  220% 50%; }
+      }
+      /* Soft caret blink for the live transcript */
+      @keyframes al-caret {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+      }
+
+      /* ============================================================
+         Polish layer: motion + interaction feedback
+         ============================================================ */
+
+      /* Staggered list/card entrance — translateY + fade */
+      @keyframes al-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      /* Card exit — resolving/dismissing a Today card lifts away (pair with
+         a height-collapse on the wrapper so siblings settle, not jump) */
+      @keyframes al-card-out {
+        from { opacity: 1; transform: none; }
+        to   { opacity: 0; transform: translateY(-8px) scale(0.97); }
+      }
+      /* Overlay/sheet exits — mirrors of al-overlay-in / al-sheet-up */
+      @keyframes al-overlay-out {
+        to { opacity: 0; }
+      }
+      @keyframes al-sheet-down {
+        to { opacity: 0; transform: translateY(40px); }
+      }
+      /* Celebration twinkle — the unlock banner's ✶ (once, on mount) */
+      @keyframes al-sparkle {
+        0%   { transform: scale(0.4) rotate(-30deg); opacity: 0; }
+        55%  { transform: scale(1.25) rotate(8deg);  opacity: 1; }
+        100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+      }
+      /* Splash: mark pops in with a gentle overshoot */
+      @keyframes al-splash-pop {
+        0%   { opacity: 0; transform: scale(0.82); }
+        60%  { opacity: 1; transform: scale(1.04); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      /* Splash: concentric rings ripple outward from the mark */
+      @keyframes al-ripple {
+        0%   { opacity: 0.45; transform: scale(0.55); }
+        100% { opacity: 0;    transform: scale(2.4); }
+      }
+      /* Splash exit — whole screen fades & lifts away */
+      @keyframes al-splash-out {
+        from { opacity: 1; transform: scale(1); }
+        to   { opacity: 0; transform: scale(1.06); }
+      }
+      /* View enter (forward nav): slide in from the right.
+         Rest at `none` so the settled wrapper doesn't become a containing
+         block for fixed-position modals rendered inside the view. */
+      @keyframes al-view-in {
+        from { opacity: 0; transform: translateX(14px); }
+        to   { opacity: 1; transform: none; }
+      }
+      /* View enter (back nav): slide in from the left */
+      @keyframes al-view-in-back {
+        from { opacity: 0; transform: translateX(-14px); }
+        to   { opacity: 1; transform: none; }
+      }
+      /* Toast / snackbar rise */
+      @keyframes al-toast-in {
+        from { opacity: 0; transform: translateY(24px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes al-toast-out {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to   { opacity: 0; transform: translateY(12px) scale(0.98); }
+      }
+      /* Bottom-sheet / overlay rise */
+      @keyframes al-sheet-up {
+        from { opacity: 0; transform: translateY(40px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes al-overlay-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      /* Skeleton shimmer sweep */
+      @keyframes al-skel {
+        0%   { background-position: -160% 0; }
+        100% { background-position:  260% 0; }
+      }
+      /* Pull-to-refresh spinner */
+      @keyframes al-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Press feedback — opt in with class="al-press" on any tappable.
+         Buttons get it for free below. */
+      .al-press {
+        -webkit-tap-highlight-color: transparent;
+        transition: transform 110ms cubic-bezier(.32,.72,.24,1), filter 110ms ease;
+        touch-action: manipulation;
+      }
+      .al-press:active { transform: scale(0.972); filter: brightness(0.97); }
+
+      /* Every real button gets a subtle press, unless disabled */
+      button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+      button:not(:disabled):active { transform: scale(0.972); }
+
+      /* Staggered entrance helper: set --i on each child for the delay step.
+         NOTE: resting state is visible (opacity:1) — we use `both` fill so the
+         backwards-fill hides the element during the delay (no flash-of-content)
+         while still degrading to fully visible if the animation never runs
+         (e.g. loaded in a background tab, or animations disabled). */
+      .al-rise {
+        animation: al-rise 460ms cubic-bezier(.22,1,.36,1) both;
+        animation-delay: calc(var(--i, 0) * 42ms);
+      }
+
+      /* Skeleton block */
+      .al-skel {
+        background:
+          linear-gradient(100deg,
+            var(--c-paper-deep) 30%,
+            rgba(255,255,255,0.45) 50%,
+            var(--c-paper-deep) 70%);
+        background-size: 220% 100%;
+        animation: al-skel 1.25s ease-in-out infinite;
+        border-radius: 12px;
+      }
+      :root[data-theme="dark"] .al-skel {
+        background:
+          linear-gradient(100deg,
+            rgba(255,255,255,0.04) 30%,
+            rgba(255,255,255,0.10) 50%,
+            rgba(255,255,255,0.04) 70%);
+        background-size: 220% 100%;
+      }
+
+      /* Safe-area helpers for installed / notched devices */
+      .al-safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+      .al-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+      /* Paper grain — a faint fractal-noise wash over the whole surface so the
+         app feels like a crafted, tactile object instead of flat fills. Sits
+         above everything, ignores pointer events. */
+      .al-grain {
+        position: absolute;
+        inset: 0;
+        z-index: 600;
+        pointer-events: none;
+        opacity: 0.04;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-size: 200px 200px;
+      }
+      :root[data-theme="dark"] .al-grain {
+        mix-blend-mode: screen;
+        opacity: 0.055;
+      }
+
+      /* ── Ambient aurora ──────────────────────────────────────────────────
+         A slow-drifting luminous field behind the whole app — barely-there
+         warmth in light, a living cosmos in dark. Sits beneath the content
+         (z-index 0) and glows through the gaps between cards and the chrome.
+         This is the atmosphere that makes the app feel alive on open. */
+      .al-aurora {
+        position: absolute;
+        inset: -12%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.85;
+        filter: blur(22px);
+        background:
+          radial-gradient(38% 34% at 16% 12%, rgba(184,89,58,0.11), transparent 70%),
+          radial-gradient(44% 40% at 86% 20%, rgba(201,138,44,0.10), transparent 70%),
+          radial-gradient(50% 46% at 72% 90%, rgba(156,92,118,0.09), transparent 70%),
+          radial-gradient(42% 42% at 22% 82%, rgba(90,122,79,0.06), transparent 70%);
+        animation: al-aurora-drift 26s ease-in-out infinite alternate;
+        will-change: transform;
+      }
+      :root[data-theme="dark"] .al-aurora {
+        opacity: 1;
+        background:
+          radial-gradient(42% 36% at 15% 10%, rgba(215,119,80,0.26), transparent 68%),
+          radial-gradient(46% 42% at 88% 18%, rgba(217,154,62,0.18), transparent 70%),
+          radial-gradient(54% 50% at 74% 92%, rgba(176,126,160,0.22), transparent 70%),
+          radial-gradient(46% 46% at 20% 84%, rgba(120,158,128,0.14), transparent 72%);
+      }
+      @keyframes al-aurora-drift {
+        0%   { transform: translate3d(0, 0, 0) scale(1); }
+        50%  { transform: translate3d(2.5%, -2%, 0) scale(1.09); }
+        100% { transform: translate3d(-2%, 1.5%, 0) scale(1.05); }
+      }
+
+      /* Crisp, aligned numerals everywhere they matter (stats, dates, pills). */
+      .al-tnum { font-variant-numeric: tabular-nums lining-nums; }
+
+      /* Frosted glass — the floating-chrome material (nav pill, ⌘K palette,
+         bottom sheets). Inner top hairline fakes a beveled light edge. */
+      .al-glass {
+        background: var(--glass-bg);
+        -webkit-backdrop-filter: blur(22px) saturate(1.65);
+        backdrop-filter: blur(22px) saturate(1.65);
+        border: 1px solid var(--glass-brd);
+        box-shadow: inset 0 1px 0 var(--glass-edge), var(--shadow-card-raised);
+      }
+      /* Lighter glass for floating buttons/chips (vs .al-glass = chrome).
+         No inline glass recipes — use one of these two classes. */
+      .al-glass-chip {
+        background: var(--glass-chip);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        backdrop-filter: blur(12px) saturate(1.4);
+        border: 1px solid var(--glass-brd);
+        box-shadow: inset 0 1px 0 var(--glass-edge);
+      }
+
+      /* Command palette entrance — quick spring up + settle */
+      @keyframes al-pop {
+        from { opacity: 0; transform: translateY(10px) scale(0.985); }
+        to   { opacity: 1; transform: none; }
+      }
+      .al-pop { animation: al-pop 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+      /* Wrong-passcode shake (LockScreen dots) */
+      @keyframes al-shake {
+        10%, 90% { transform: translateX(-1px); }
+        20%, 80% { transform: translateX(2px); }
+        30%, 50%, 70% { transform: translateX(-5px); }
+        40%, 60% { transform: translateX(5px); }
+      }
+
+      /* Keyboard-key chip (⌘K hints) */
+      .al-kbd {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 10px;
+        line-height: 1;
+        color: var(--c-ink3);
+        background: var(--c-paper-deep);
+        border: 1px solid var(--c-rule);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        padding: 3px 5px;
+      }
+
+      /* Desktop/power-user polish: a real focus ring + branded text dressing.
+         :focus-visible only — taps never show the ring. */
+      :focus-visible {
+        outline: 2px solid var(--c-accent);
+        outline-offset: 2px;
+      }
+      :focus:not(:focus-visible) { outline: none; }
+      ::selection { background: var(--c-selection); color: var(--c-ink); }
+      input, textarea { caret-color: var(--c-accent); }
+      input::placeholder, textarea::placeholder { color: var(--c-ink4); opacity: 1; }
+      input:focus, textarea:focus, select:focus {
+        box-shadow: 0 0 0 3px var(--c-accent-soft);
+        transition: box-shadow 160ms ease;
+      }
+
+      /* iOS zoom guard: Safari force-zooms the page when a focused field's
+         font is under 16px. On touch devices, no form field may go smaller.
+         (!important intentionally outranks the inline styles.) */
+      @media (pointer: coarse) {
+        input, textarea, select {
+          font-size: 16px !important;
+        }
+        /* The capture notepad is a deliberate 22px editorial canvas — restore
+           it above the 16px floor so placeholder and typed text match. */
+        textarea.al-capture {
+          font-size: 22px !important;
+        }
+      }
+
+      /* Vestibular safety: collapse decorative motion to simple fades.
+         One global rule — components rely on this instead of per-site checks. */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+        .al-aurora { animation: none !important; }
+      }
+
+      /* Desktop hover layer — inert on touch devices */
+      @media (hover: hover) and (pointer: fine) {
+        .al-hover-row { transition: background-color 120ms ease; }
+        .al-hover-row:hover { background-color: var(--c-accent-softer); }
+        button.al-press:not(:disabled):hover { filter: brightness(1.04); }
+        :root[data-theme="dark"] button.al-press:not(:disabled):hover { filter: brightness(1.15); }
+      }
+
+      /* Circle Score dial: the value arc glows against dark surfaces */
+      :root[data-theme="dark"] .al-score-arc {
+        filter: drop-shadow(0 0 9px currentColor);
+      }
+
+      /* Heatmap cells sweep in column by column */
+      @keyframes al-heat-in {
+        from { opacity: 0; transform: scale(0.5); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+
+      /* Respect users who ask for less motion */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./assets/app.6EVL7cHu.js"></script>
+  </body>
+</html>
