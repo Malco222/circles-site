@@ -20959,16 +20959,34 @@ async function pickWebContacts() {
   const picked = await navigator.contacts.select(props, {
     multiple: true
   });
-  const first = v => Array.isArray(v) ? v[0] || '' : v || '';
-  return (picked || []).map(c => ({
-    name: String(first(c.name)).trim(),
-    email: String(first(c.email)).trim(),
-    phone: String(first(c.tel)).trim(),
-    org: '',
-    title: '',
-    birthday: '',
-    photo: null
-  })).filter(c => c.name);
+  // Defensive flattening: the spec says each property is an array of strings,
+  // but flagged/early implementations (iOS) have returned bare strings and
+  // even objects. Never let a quirk silently drop someone the user chose.
+  const first = v => {
+    const one = Array.isArray(v) ? v[0] : v;
+    if (one == null) return '';
+    if (typeof one === 'string') return one.trim();
+    if (typeof one === 'object') {
+      return Object.values(one).filter(x => typeof x === 'string' && x.trim()).join(' ').trim();
+    }
+    return String(one).trim();
+  };
+  return (picked || []).map(c => {
+    const email = first(c.email);
+    const phone = first(c.tel);
+    // Fallback display name: email local part, then the phone number —
+    // an entry the user picked must never vanish for lacking a name.
+    const name = first(c.name) || (email ? email.split('@')[0] : '') || phone;
+    return {
+      name,
+      email,
+      phone,
+      org: '',
+      title: '',
+      birthday: '',
+      photo: null
+    };
+  }).filter(c => c.name);
 }
 async function pickNativeContacts() {
   const p = contactsPlugin();
