@@ -21292,7 +21292,7 @@ function ContactsImport({
             lineHeight: 1.5,
             marginBottom: 14
           },
-          children: ["On iPhone: open the Contacts app \u2192 Lists \u2192 tap a list \u2192 Share \u2192 Export vCard.", /*#__PURE__*/jsxRuntimeExports.jsx("br", {}), "On Android: open Contacts \u2192 menu \u2192 Settings \u2192 Export."]
+          children: ["On iPhone: Contacts app \u2192 Lists (top-left) \u2192 touch and hold \u201CAll Contacts\u201D \u2192 Export \u2192 Save to Files. Then choose that file here \u2014 birthdays and photos come along.", /*#__PURE__*/jsxRuntimeExports.jsx("br", {}), "On Android: Contacts \u2192 menu \u2192 Settings \u2192 Export."]
         }), /*#__PURE__*/jsxRuntimeExports.jsx(Button, {
           onClick: handlePickFile,
           children: "Choose a .vcf file"
