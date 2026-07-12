@@ -22111,12 +22111,27 @@ function Settings({
     };
     reader.readAsText(file);
   }
-  function handleClear() {
+  // Factory reset is a two-step, typed confirmation — no accidental taps.
+  // The user must type DELETE (case-insensitive; we uppercase as they type)
+  // before the destructive button arms.
+  const [eraseArmed, setEraseArmed] = reactExports.useState(false);
+  const [eraseText, setEraseText] = reactExports.useState('');
+  const eraseReady = eraseText.trim() === 'DELETE';
+  function armErase() {
     haptics.warn();
-    if (window.confirm('Erase everything on this device — circles, people, notes, history? This cannot be undone.')) {
-      clearData();
-      location.reload();
-    }
+    setEraseText('');
+    setEraseArmed(true);
+  }
+  function cancelErase() {
+    haptics.tap();
+    setEraseArmed(false);
+    setEraseText('');
+  }
+  function handleClear() {
+    if (!eraseReady) return;
+    haptics.warn();
+    clearData();
+    location.reload();
   }
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     style: {
@@ -22566,16 +22581,87 @@ function Settings({
         })]
       }), /*#__PURE__*/jsxRuntimeExports.jsx(Row, {
         label: "Clear all data",
-        sub: "Erase everything on this device.",
+        sub: "Factory-reset the app on this device.",
         children: /*#__PURE__*/jsxRuntimeExports.jsx("button", {
-          onClick: handleClear,
+          onClick: eraseArmed ? cancelErase : armErase,
           className: "al-press",
           style: {
             ...miniBtnStyle,
-            color: theme.colors.danger
+            color: eraseArmed ? theme.colors.ink2 : theme.colors.danger
           },
-          children: "Erase"
+          children: eraseArmed ? 'Cancel' : 'Erase…'
         })
+      }), eraseArmed && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        className: "al-pop",
+        style: {
+          margin: '4px 0 8px',
+          padding: '14px 16px',
+          background: theme.colors.dangerSoft,
+          border: `1px solid ${theme.colors.danger}`,
+          borderRadius: theme.radii.lg
+        },
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          style: {
+            fontFamily: theme.fonts.serif,
+            fontSize: 15,
+            color: theme.colors.ink,
+            lineHeight: 1.45
+          },
+          children: "This will completely wipe all of your data \u2014 people, moments, notes, circles, and settings \u2014 and factory-reset the app. There is no undo."
+        }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+          style: {
+            marginTop: 6,
+            fontFamily: theme.fonts.sans,
+            fontSize: 13,
+            color: theme.colors.ink2,
+            lineHeight: 1.5
+          },
+          children: ["If anything in here matters, back up first (above). To proceed, type ", /*#__PURE__*/jsxRuntimeExports.jsx("strong", {
+            children: "DELETE"
+          }), " below."]
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("input", {
+          value: eraseText,
+          onChange: e => setEraseText(e.target.value.toUpperCase()),
+          placeholder: "Type DELETE",
+          "aria-label": "Type DELETE to confirm the factory reset",
+          autoCapitalize: "characters",
+          autoCorrect: "off",
+          autoComplete: "off",
+          style: {
+            marginTop: 12,
+            width: '100%',
+            padding: '10px 12px',
+            fontFamily: theme.fonts.mono,
+            fontSize: 16,
+            letterSpacing: '0.12em',
+            background: theme.colors.paper,
+            border: `1px solid ${theme.colors.rule}`,
+            borderRadius: theme.radii.md,
+            outline: 'none',
+            color: theme.colors.ink,
+            boxSizing: 'border-box'
+          }
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("button", {
+          onClick: handleClear,
+          disabled: !eraseReady,
+          className: "al-press",
+          style: {
+            marginTop: 10,
+            width: '100%',
+            padding: '12px 20px',
+            minHeight: 44,
+            borderRadius: theme.radii.pill,
+            border: 'none',
+            background: eraseReady ? theme.colors.danger : theme.colors.ruleStrong,
+            color: theme.colors.onAccent,
+            fontFamily: theme.fonts.serif,
+            fontSize: 15,
+            cursor: eraseReady ? 'pointer' : 'not-allowed',
+            opacity: eraseReady ? 1 : 0.6,
+            transition: 'background 150ms ease, opacity 150ms ease'
+          },
+          children: "Erase everything"
+        })]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs(Section, {
       title: "ABOUT",
