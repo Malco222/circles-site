@@ -11661,7 +11661,9 @@ function Chip({
 // We use the v4 mark file so old teal/navy renders never come back from
 // browser cache.
 
-const LOGO_MARK = '/circles-logo-mark-v4.png';
+// Relative on purpose: resolves at the domain root (dev, Capacitor) AND
+// under a subpath (GitHub Pages /circles-site/app/).
+const LOGO_MARK = './circles-logo-mark-v4.png';
 
 // Wordmark colors resolve to the theme CSS variables so the lockup adapts to
 // dark mode (the mark image itself is the same orange in both themes).
