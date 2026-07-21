@@ -405,6 +405,42 @@
 
       /* Crisp, aligned numerals everywhere they matter (stats, dates, pills). */
       .al-tnum { font-variant-numeric: tabular-nums lining-nums; }
+      /* Luxury type utilities — Newsreader ships a 6..72 optical-size axis
+         (already loaded); these put it to work. */
+      .al-display { font-variation-settings: "opsz" 72; }
+      .al-smallcaps { font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+
+      /* ---- Time-of-day ambiance ----
+         The paper subtly follows the sun: warmer cream toward evening, a
+         dimmer candlelit tone late. Light theme only — dark mode is already
+         its own lamplight. App.jsx stamps data-daypart hourly. */
+      :root[data-daypart="evening"]:not([data-theme="dark"]) {
+        --c-paper:      #f6efdd;
+        --c-paper-deep: #efe4cc;
+        --c-card:       #fcf6e7;
+      }
+      :root[data-daypart="night"]:not([data-theme="dark"]) {
+        --c-paper:      #f3ecda;
+        --c-paper-deep: #ebdfc6;
+        --c-card:       #faf3e2;
+      }
+
+      /* ---- The living orbit ----
+         Rings drift imperceptibly (4-minute revolutions); nodes counter-
+         rotate so faces stay upright; the sun breathes. All neutralized by
+         the prefers-reduced-motion block above. */
+      @keyframes al-orbit-drift {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      @keyframes al-orbit-counter {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(-360deg); }
+      }
+      @keyframes al-breathe {
+        0%, 100% { transform: scale(1); opacity: 0.92; }
+        50%      { transform: scale(1.045); opacity: 1; }
+      }
 
       /* Frosted glass — the floating-chrome material (nav pill, ⌘K palette,
          bottom sheets). Inner top hairline fakes a beveled light edge. */
@@ -525,6 +561,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="./assets/app.CZUEiqUY.js"></script>
+    <script type="module" src="./assets/app.D3VQBzWI.js"></script>
   </body>
 </html>

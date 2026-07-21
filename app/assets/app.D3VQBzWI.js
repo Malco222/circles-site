@@ -4138,17 +4138,357 @@ function CloseButton({
   });
 }
 
+// OrbitArt — decorative brand illustration for empty states.
+//
+// A quiet page from the field notebook: thin dashed rings, small warm
+// "planet" beads (the same rose→terracotta→amber→olive arc the avatar
+// gradients live on), a soft terracotta center glow, and the occasional
+// four-point star. Purely decorative (aria-hidden). Theme paint is set via
+// `style` (not SVG attributes) so the CSS variables resolve in both the
+// cream and lamplight palettes; the bead hsl stops are fixed values chosen
+// to read on both papers.
+//
+// Variants:
+//   'orbit'         — three rings, six planets, center dot (day-one welcome)
+//   'constellation' — scattered dots joined by dashed lines, one warm
+//                     highlight (nothing-found moments)
+//   'quiet'         — a single ring, one planet, generous emptiness
+//                     ("all clear" moments)
+//
+// Motion is weather, not fireworks: ring groups drift one revolution every
+// four minutes (al-orbit-drift), sparkles twinkle once on mount
+// (al-sparkle), the constellation's highlight breathes (al-breathe). All of
+// it is neutralized by the global prefers-reduced-motion block in
+// index.html — no per-component checks needed.
+
+const C = 90; // viewBox center — viewBox is 0 0 180 180 at every size
+
+// Warm-arc bead stops. Lightness 54–78% so the dots read as deliberate
+// color on cream (#f6f1e7) and stay luminous on the dark paper (#121008).
+const WARM = {
+  rose: ['hsl(342, 46%, 78%)', 'hsl(331, 50%, 64%)'],
+  terracotta: ['hsl(16, 52%, 74%)', 'hsl(9, 54%, 58%)'],
+  amber: ['hsl(40, 56%, 75%)', 'hsl(31, 58%, 60%)'],
+  olive: ['hsl(78, 30%, 70%)', 'hsl(87, 28%, 54%)'],
+  clay: ['hsl(24, 42%, 72%)', 'hsl(17, 46%, 57%)']
+};
+
+// Point on a ring: radius + angle in degrees (0° = 3 o'clock, clockwise).
+const pt = (r, deg) => {
+  const a = deg * Math.PI / 180;
+  return [C + r * Math.cos(a), C + r * Math.sin(a)];
+};
+function OrbitArt({
+  variant = 'orbit',
+  size = 180
+}) {
+  const uid = reactExports.useId();
+  const Body = variant === 'constellation' ? Constellation : variant === 'quiet' ? Quiet : Orbit;
+  return /*#__PURE__*/jsxRuntimeExports.jsxs("svg", {
+    width: size,
+    height: size,
+    viewBox: "0 0 180 180",
+    "aria-hidden": "true",
+    style: {
+      display: 'block'
+    },
+    children: [/*#__PURE__*/jsxRuntimeExports.jsxs("defs", {
+      children: [Object.entries(WARM).map(([tone, [lit, shade]]) => /*#__PURE__*/jsxRuntimeExports.jsxs("radialGradient", {
+        id: `${uid}-${tone}`,
+        cx: "35%",
+        cy: "30%",
+        r: "80%",
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+          offset: "0%",
+          stopColor: lit
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+          offset: "100%",
+          stopColor: shade
+        })]
+      }, tone)), /*#__PURE__*/jsxRuntimeExports.jsxs("radialGradient", {
+        id: `${uid}-glow`,
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+          offset: "0%",
+          style: {
+            stopColor: 'var(--c-accent)',
+            stopOpacity: 0.12
+          }
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+          offset: "70%",
+          style: {
+            stopColor: 'var(--c-accent)',
+            stopOpacity: 0.05
+          }
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+          offset: "100%",
+          style: {
+            stopColor: 'var(--c-accent)',
+            stopOpacity: 0
+          }
+        })]
+      })]
+    }), /*#__PURE__*/jsxRuntimeExports.jsx(Body, {
+      uid: uid
+    })]
+  });
+}
+
+// ---- variants ----
+
+function Orbit({
+  uid
+}) {
+  return /*#__PURE__*/jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, {
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      cx: C,
+      cy: C,
+      r: 58,
+      fill: `url(#${uid}-glow)`
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs(Drift, {
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx(Ring, {
+        r: 30,
+        opacity: 0.5
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Ring, {
+        r: 52,
+        opacity: 0.4
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Ring, {
+        r: 74,
+        opacity: 0.3
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "terracotta",
+        r: 3,
+        at: pt(30, 208)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "amber",
+        r: 4.5,
+        at: pt(52, 331)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "rose",
+        r: 2.5,
+        at: pt(52, 118)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "olive",
+        r: 3.5,
+        at: pt(74, 26)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "clay",
+        r: 5,
+        at: pt(74, 163)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "rose",
+        r: 2.5,
+        at: pt(74, 287)
+      })]
+    }), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      cx: C,
+      cy: C,
+      r: 3.5,
+      opacity: 0.9,
+      style: {
+        fill: 'var(--c-accent)'
+      }
+    }), /*#__PURE__*/jsxRuntimeExports.jsx(Sparkle, {
+      x: 134,
+      y: 44,
+      s: 5,
+      alpha: 0.55,
+      delay: 250
+    }), /*#__PURE__*/jsxRuntimeExports.jsx(Sparkle, {
+      x: 50,
+      y: 140,
+      s: 3.5,
+      color: WARM.amber[1],
+      alpha: 0.5,
+      delay: 520
+    })]
+  });
+}
+
+// An imperfect ring of dots, joined stitch by stitch — a circle, waiting.
+const CONST_PTS = [[48, 104], [58, 62], [96, 42], [132, 62], [140, 106], [104, 140], [64, 132]];
+const CONST_HIGHLIGHT = 3;
+function Constellation({
+  uid
+}) {
+  const d = CONST_PTS.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ') + ' Z';
+  const [hx, hy] = CONST_PTS[CONST_HIGHLIGHT];
+  return /*#__PURE__*/jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, {
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx("path", {
+      d: d,
+      fill: "none",
+      strokeWidth: "1",
+      strokeLinecap: "round",
+      strokeDasharray: "2 4",
+      opacity: 0.35,
+      style: {
+        stroke: 'var(--c-ink3)'
+      }
+    }), CONST_PTS.map(([x, y], i) => i === CONST_HIGHLIGHT ? null : /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      cx: x,
+      cy: y,
+      r: 2.2,
+      opacity: 0.55,
+      style: {
+        fill: 'var(--c-ink3)'
+      }
+    }, i)), /*#__PURE__*/jsxRuntimeExports.jsxs("g", {
+      style: {
+        transformOrigin: `${hx}px ${hy}px`,
+        animation: 'al-breathe 6s ease-in-out infinite'
+      },
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+        cx: hx,
+        cy: hy,
+        r: 14,
+        fill: `url(#${uid}-glow)`
+      }), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+        cx: hx,
+        cy: hy,
+        r: 4.5,
+        fill: `url(#${uid}-amber)`
+      })]
+    }), /*#__PURE__*/jsxRuntimeExports.jsx(Sparkle, {
+      x: 36,
+      y: 44,
+      s: 4,
+      alpha: 0.5,
+      delay: 300
+    })]
+  });
+}
+function Quiet({
+  uid
+}) {
+  return /*#__PURE__*/jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, {
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      cx: C,
+      cy: C,
+      r: 44,
+      fill: `url(#${uid}-glow)`
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs(Drift, {
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx(Ring, {
+        r: 56,
+        opacity: 0.45
+      }), /*#__PURE__*/jsxRuntimeExports.jsx(Planet, {
+        uid: uid,
+        tone: "amber",
+        r: 4,
+        at: pt(56, 336)
+      })]
+    }), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      cx: C,
+      cy: C,
+      r: 3,
+      opacity: 0.85,
+      style: {
+        fill: 'var(--c-accent)'
+      }
+    }), /*#__PURE__*/jsxRuntimeExports.jsx(Sparkle, {
+      x: 140,
+      y: 44,
+      s: 3,
+      alpha: 0.4,
+      delay: 400
+    })]
+  });
+}
+
+// ---- parts ----
+
+// Four-minute revolution, per the living-orbit foundation. The group has no
+// attribute transform, so the CSS transform-origin (view-box units) is
+// exactly the artwork center.
+function Drift({
+  children
+}) {
+  return /*#__PURE__*/jsxRuntimeExports.jsx("g", {
+    style: {
+      transformOrigin: `${C}px ${C}px`,
+      animation: 'al-orbit-drift 240s linear infinite'
+    },
+    children: children
+  });
+}
+function Ring({
+  r,
+  opacity
+}) {
+  return /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+    cx: C,
+    cy: C,
+    r: r,
+    fill: "none",
+    strokeWidth: "1",
+    strokeLinecap: "round",
+    strokeDasharray: "3 5",
+    opacity: opacity,
+    style: {
+      stroke: 'var(--c-ink3)'
+    }
+  });
+}
+function Planet({
+  uid,
+  tone,
+  r,
+  at
+}) {
+  const [x, y] = at;
+  return /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+    cx: x,
+    cy: y,
+    r: r,
+    fill: `url(#${uid}-${tone})`
+  });
+}
+
+// Four-point star drawn at absolute coordinates so the one-shot al-sparkle
+// scale/rotate pivots on the star itself. Opacity is carried by
+// fill-opacity — al-sparkle animates `opacity`, and the two multiply.
+function Sparkle({
+  x,
+  y,
+  s,
+  color = 'var(--c-accent)',
+  alpha = 0.5,
+  delay = 0
+}) {
+  const d = [`M ${x} ${y - s}`, `C ${x + 0.12 * s} ${y - 0.3 * s} ${x + 0.3 * s} ${y - 0.12 * s} ${x + s} ${y}`, `C ${x + 0.3 * s} ${y + 0.12 * s} ${x + 0.12 * s} ${y + 0.3 * s} ${x} ${y + s}`, `C ${x - 0.12 * s} ${y + 0.3 * s} ${x - 0.3 * s} ${y + 0.12 * s} ${x - s} ${y}`, `C ${x - 0.3 * s} ${y - 0.12 * s} ${x - 0.12 * s} ${y - 0.3 * s} ${x} ${y - s}`, 'Z'].join(' ');
+  return /*#__PURE__*/jsxRuntimeExports.jsx("path", {
+    d: d,
+    fillOpacity: alpha,
+    style: {
+      fill: color,
+      transformOrigin: `${x}px ${y}px`,
+      animation: `al-sparkle 700ms ${theme.ease.out} ${delay}ms both`
+    }
+  });
+}
+
 // EmptyState — the quiet "nothing here yet" panel.
 //
 // Uses the Circles ring motif (concentric rings + a person dot) drawn in
 // muted ink so it reads as part of the brand, not a sad blank. Paint is set
 // via `style` (not SVG attributes) so the theme's CSS variables resolve in
 // both light and dark.
+//
+// Pass `art` ('orbit' | 'constellation' | 'quiet') to swap the small ring
+// mark for a full OrbitArt illustration — a page from the field notebook
+// rather than a placeholder. `artSize` tunes it (default 180). No `art`
+// prop = the classic ring mark, unchanged.
 
 function EmptyState$3({
   title,
   subtitle,
-  action
+  action,
+  art,
+  artSize
 }) {
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     className: "al-rise",
@@ -4160,7 +4500,15 @@ function EmptyState$3({
       alignItems: 'center',
       gap: 14
     },
-    children: [/*#__PURE__*/jsxRuntimeExports.jsx(RingMark, {}), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+    children: [art ? /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        margin: '-8px 0 -12px'
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(OrbitArt, {
+        variant: art,
+        size: artSize
+      })
+    }) : /*#__PURE__*/jsxRuntimeExports.jsx(RingMark, {}), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         fontFamily: theme.fonts.serif,
         fontSize: 18,
@@ -4571,6 +4919,8 @@ function PeopleList({
       onCapture: onCapture,
       onAdd: onAdd
     }) : sorted.length === 0 ? /*#__PURE__*/jsxRuntimeExports.jsx(EmptyState$3, {
+      art: "constellation",
+      artSize: 120,
       title: "No matches",
       subtitle: `No one matches “${q.trim()}” — check the spelling or add them.`,
       action: /*#__PURE__*/jsxRuntimeExports.jsx(Button, {
@@ -4821,6 +5171,16 @@ function EmptyState$2({
       borderRadius: theme.radii.lg
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'center',
+        margin: '-10px 0 2px'
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(OrbitArt, {
+        variant: "orbit",
+        size: 160
+      })
+    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         fontFamily: theme.fonts.serif,
         fontStyle: 'italic',
@@ -6579,6 +6939,7 @@ function GlanceCollapsed({
             paddingTop: 1
           },
           children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+            className: "al-display",
             style: {
               fontFamily: theme.fonts.serif,
               fontSize: 22,
@@ -7183,6 +7544,7 @@ function GlanceDeep({
           minWidth: 0
         },
         children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: "al-display",
           style: {
             fontFamily: theme.fonts.serif,
             fontSize: 16,
@@ -12774,6 +13136,7 @@ function Pulse({
         children: "YOUR PULSE"
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("h1", {
+      className: "al-display",
       style: {
         fontFamily: theme.fonts.serif,
         fontSize: 32,
@@ -13218,7 +13581,7 @@ function HealthRing({
           justifyContent: 'center'
         },
         children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-          className: "al-tnum",
+          className: "al-display al-tnum",
           style: {
             fontFamily: theme.fonts.serif,
             fontSize: 28,
@@ -13399,7 +13762,7 @@ function StatCard({
       padding: small ? '14px 8px' : '16px 12px'
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-      className: "al-tnum",
+      className: "al-display al-tnum",
       style: {
         fontFamily: theme.fonts.serif,
         fontSize: small ? 28 : 34,
@@ -15573,16 +15936,24 @@ function ScoreDial({
 
   // Sweep the arc in on mount; rest immediately under reduced-motion or a
   // hidden tab (where animations freeze and would strand the dial at zero).
+  // `settled` fires as the draw completes — the terminal jewel sets into
+  // place only once the needle has arrived.
   const [mounted, setMounted] = reactExports.useState(false);
+  const [settled, setSettled] = reactExports.useState(false);
   reactExports.useEffect(() => {
     const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const hidden = typeof document !== 'undefined' && document.hidden;
     if (reduce || hidden) {
       setMounted(true);
+      setSettled(true);
       return;
     }
     const id = setTimeout(() => setMounted(true), 80);
-    return () => clearTimeout(id);
+    const jewelId = setTimeout(() => setSettled(true), 950);
+    return () => {
+      clearTimeout(id);
+      clearTimeout(jewelId);
+    };
   }, []);
   if (health.total === 0) return null;
 
@@ -15627,6 +15998,38 @@ function ScoreDial({
   const arcLen = C * SWEEP;
   const valueLen = Math.max(0.01, arcLen * (score / 100));
   const maxDay = Math.max(...week.days.map(d => d.count), 1);
+
+  // Instrument geometry — everything below derives from the same start angle
+  // and sweep the arc's rotate(135) + dasharray encode.
+  const START_DEG = 135;
+  const SWEEP_DEG = 360 * SWEEP; // 270
+  const rad = deg => deg * Math.PI / 180;
+  const rnd = v => Math.round(v * 100) / 100;
+
+  // Chapter ring: 56 hairline ticks engraved just outside the arc
+  // (tick radius ≈ R + 10, clear of the rounded caps), every 5th a touch
+  // longer and darker — the bezel detail that makes the dial an instrument.
+  const TICK_N = 56;
+  const ticks = Array.from({
+    length: TICK_N
+  }, (_, i) => {
+    const major = i % 5 === 0;
+    const a = rad(START_DEG + SWEEP_DEG * (i / (TICK_N - 1)));
+    const r0 = major ? 77.5 : 78.5;
+    const r1 = major ? 83 : 81.5;
+    return {
+      major,
+      x1: rnd(84 + r0 * Math.cos(a)),
+      y1: rnd(84 + r0 * Math.sin(a)),
+      x2: rnd(84 + r1 * Math.cos(a)),
+      y2: rnd(84 + r1 * Math.sin(a))
+    };
+  });
+
+  // Terminal jewel: the needle tip, sitting exactly where the value dash ends.
+  const endRad = rad(START_DEG + SWEEP_DEG * (score / 100));
+  const jewelX = rnd(84 + R * Math.cos(endRad));
+  const jewelY = rnd(84 + R * Math.sin(endRad));
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     role: "button",
     tabIndex: 0,
@@ -15680,7 +16083,20 @@ function ScoreDial({
           display: 'block'
         },
         "aria-hidden": "true",
-        children: [/*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("g", {
+          style: {
+            color: theme.colors.ink
+          },
+          children: ticks.map((t, i) => /*#__PURE__*/jsxRuntimeExports.jsx("line", {
+            x1: t.x1,
+            y1: t.y1,
+            x2: t.x2,
+            y2: t.y2,
+            stroke: "currentColor",
+            strokeWidth: 1,
+            strokeOpacity: t.major ? 0.26 : 0.12
+          }, i))
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
           cx: 84,
           cy: 84,
           r: R,
@@ -15707,6 +16123,19 @@ function ScoreDial({
             opacity: mounted ? 1 : 0,
             transition: `stroke-dashoffset 1100ms ${theme.ease.out}, opacity 400ms ease`
           }
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+          cx: jewelX,
+          cy: jewelY,
+          r: 3.5,
+          fill: band.color,
+          stroke: theme.colors.card,
+          strokeWidth: 2,
+          style: {
+            opacity: settled ? 1 : 0,
+            transform: settled ? 'scale(1)' : 'scale(0.4)',
+            transformOrigin: `${jewelX}px ${jewelY}px`,
+            transition: `opacity ${theme.motion.base}ms ease, transform ${theme.motion.base}ms ${theme.ease.out}`
+          }
         })]
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
@@ -15718,14 +16147,14 @@ function ScoreDial({
           justifyContent: 'center'
         },
         children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-          className: "al-tnum",
+          className: "al-display al-tnum",
           style: {
             fontFamily: theme.fonts.serif,
             fontSize: 40,
             fontWeight: 600,
             color: theme.colors.ink,
             lineHeight: 1,
-            letterSpacing: '-0.02em'
+            letterSpacing: '-0.025em'
           },
           children: [/*#__PURE__*/jsxRuntimeExports.jsx(CountUp, {
             value: score,
@@ -15739,6 +16168,7 @@ function ScoreDial({
             children: "%"
           })]
         }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: "al-smallcaps",
           style: {
             ...microLabel,
             marginTop: 4,
@@ -20031,6 +20461,13 @@ function initials(name) {
 // You at the centre (pinned), people orbiting at a distance set by how
 // recently you've connected — closer = in touch, the outer ring = drifting.
 // Tap a node → bottom sheet with intro chain + last touch.
+//
+// The orbit is ALIVE, barely: each ring drifts on a glacial revolution
+// (6–10 minutes), every node counter-rotates so faces stay upright, and the
+// sun breathes. At a glance the map is still; live with it for five seconds
+// and you notice the weather. All of it is pure CSS (al-orbit-drift /
+// al-orbit-counter / al-breathe in index.html), so the global
+// prefers-reduced-motion block neutralizes it wholesale.
 
 function MapScreen({
   people,
@@ -20142,18 +20579,25 @@ function OrbitMap({
   const SIZE = 352;
   const C = SIZE / 2;
   const R = C - 22;
+  // `period` = seconds per revolution. Glacial by design: the inner ring
+  // completes a lap in six minutes, the outer in ten — drift you feel
+  // before you see. Different periods keep the rings from ever reading as
+  // one rigid plate.
   const bands = [{
     key: 'near',
     r: R * 0.46,
-    label: 'This week'
+    label: 'This week',
+    period: 360
   }, {
     key: 'mid',
     r: R * 0.73,
-    label: 'This month'
+    label: 'This month',
+    period: 480
   }, {
     key: 'far',
     r: R * 0.99,
-    label: 'Drifting'
+    label: 'Drifting',
+    period: 600
   }];
   const bandIndex = d => !Number.isFinite(d) ? 2 : d <= 14 ? 0 : d <= 45 ? 1 : 2;
 
@@ -20165,8 +20609,12 @@ function OrbitMap({
     grouped[bandIndex(n.daysSince)].push(n);
   }
   // Spread each ring's people across the circle but leave an empty wedge at
-  // the very top (GAP) reserved for the ring labels, so they never collide.
-  const placed = [];
+  // the very top (GAP) reserved for the ring labels, so they never collide
+  // at rest. (The drift will carry nodes through the wedge eventually — the
+  // labels sit on frosted chips above the nodes, so legibility holds.)
+  // Placement stays grouped PER RING because each ring renders inside its
+  // own rotating wrapper.
+  const placedByRing = [[], [], []];
   const GAP = 0.95;
   grouped.forEach((list, bi) => {
     const span = Math.PI * 2 - GAP;
@@ -20176,11 +20624,11 @@ function OrbitMap({
       const ang = start + t * span;
       const jitter = list.length > 4 ? i % 2 === 0 ? 7 : -7 : 0;
       const r = bands[bi].r + jitter;
-      placed.push({
+      placedByRing[bi].push({
         n,
         x: C + r * Math.cos(ang),
         y: C + r * Math.sin(ang),
-        bi
+        ri: i
       });
     });
   });
@@ -20199,7 +20647,8 @@ function OrbitMap({
         inset: 0,
         borderRadius: '50%',
         background: 'radial-gradient(circle at center, color-mix(in srgb, var(--c-accent) 20%, transparent) 0%, color-mix(in srgb, var(--c-accent) 7%, transparent) 32%, transparent 62%)',
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        animation: 'al-breathe 6s ease-in-out infinite'
       }
     }), /*#__PURE__*/jsxRuntimeExports.jsx("svg", {
       width: SIZE,
@@ -20239,7 +20688,7 @@ function OrbitMap({
         color: i === 2 ? theme.colors.accent : theme.colors.ink3,
         whiteSpace: 'nowrap',
         pointerEvents: 'none',
-        zIndex: 1
+        zIndex: 4
       },
       children: b.label
     }, i)), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
@@ -20250,87 +20699,109 @@ function OrbitMap({
         transform: 'translate(-50%, -50%)',
         width: 48,
         height: 48,
-        borderRadius: '50%',
-        background: theme.colors.accent,
-        color: theme.colors.onAccent,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: theme.fonts.mono,
-        fontSize: 11,
-        fontWeight: 500,
-        letterSpacing: 0.5,
-        zIndex: 2,
-        boxShadow: '0 0 0 5px color-mix(in srgb, var(--c-accent) 12%, transparent), 0 0 26px color-mix(in srgb, var(--c-accent) 50%, transparent), 0 3px 10px rgba(0,0,0,0.22)'
+        zIndex: 2
       },
-      children: youInitials
-    }), placed.map(({
-      n,
-      x,
-      y,
-      bi
-    }, idx) => {
-      const size = bi === 0 ? 38 : bi === 1 ? 33 : 29;
-      const active = n.id === activeId;
-      // Rest at its orbit, or — before reveal — collapsed onto the sun.
-      const dx = C - x;
-      const dy = C - y;
-      const transform = shown ? 'translate(-50%, -50%) scale(1)' : `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.18)`;
-      // Inner rings settle first; planets in the same ring fan out in turn.
-      const delay = shown ? Math.min(idx * 36, 540) : 0;
-      return /*#__PURE__*/jsxRuntimeExports.jsx("button", {
-        onClick: () => onTapNode(n.id),
-        "aria-label": `${n.name} — ${['seen this week', 'seen this month', 'drifting'][bi]}`,
-        className: "al-press",
+      children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
-          position: 'absolute',
-          left: x,
-          top: y,
-          transform,
-          opacity: shown ? 1 : 0,
-          transition: 'transform 660ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease',
-          transitionDelay: `${delay}ms`,
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          width: 44,
-          height: 44,
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          background: theme.colors.accent,
+          color: theme.colors.onAccent,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: active ? 5 : 3
+          fontFamily: theme.fonts.mono,
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: '0.12em',
+          boxShadow: '0 0 0 5px color-mix(in srgb, var(--c-accent) 12%, transparent), 0 0 26px color-mix(in srgb, var(--c-accent) 50%, transparent), 0 3px 10px rgba(0,0,0,0.22)',
+          animation: 'al-breathe 6s ease-in-out infinite'
         },
-        children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        children: youInitials
+      })
+    }), placedByRing.map((ringNodes, bi) => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        animation: `al-orbit-drift ${bands[bi].period}s linear infinite`,
+        willChange: 'transform',
+        pointerEvents: 'none'
+      },
+      children: ringNodes.map(({
+        n,
+        x,
+        y,
+        ri
+      }) => {
+        const size = bi === 0 ? 38 : bi === 1 ? 33 : 29;
+        const active = n.id === activeId;
+        // Rest at its orbit, or — before reveal — collapsed onto the sun.
+        const dx = C - x;
+        const dy = C - y;
+        const transform = shown ? 'translate(-50%, -50%) scale(1)' : `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.18)`;
+        // Rings settle in sequence (inner first, ~80ms apart); planets in
+        // the same ring fan out in turn.
+        const delay = shown ? Math.min(bi * 80 + ri * 30, 640) : 0;
+        // Warmth halo — people seen this week glow softly; the glow
+        // fades by two weeks. A temperature read, not a status light.
+        const halo = !Number.isFinite(n.daysSince) ? null : n.daysSince <= 7 ? '0 0 12px 3px color-mix(in srgb, var(--c-accent) 25%, transparent)' : n.daysSince <= 14 ? '0 0 9px 2px color-mix(in srgb, var(--c-accent) 12%, transparent)' : null;
+        return /*#__PURE__*/jsxRuntimeExports.jsx("button", {
+          onClick: () => onTapNode(n.id),
+          "aria-label": `${n.name} — ${['seen this week', 'seen this month', 'drifting'][bi]}`,
+          className: "al-press",
           style: {
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            background: n.color || theme.colors.ink3,
-            color: theme.colors.onAccent,
+            position: 'absolute',
+            left: x,
+            top: y,
+            transform,
+            opacity: shown ? 1 : 0,
+            transition: `transform 660ms ${theme.ease.out}, opacity 420ms ease`,
+            transitionDelay: `${delay}ms`,
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            width: 44,
+            height: 44,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontFamily: theme.fonts.mono,
-            fontSize: size * 0.32,
-            fontWeight: 500,
-            boxShadow: theme.shadow.md,
-            outline: active ? `2px solid ${theme.colors.ink}` : bi === 2 ? '1.5px dashed color-mix(in srgb, var(--c-accent) 60%, transparent)' : 'none',
-            outlineOffset: 2,
-            overflow: 'hidden'
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            zIndex: active ? 5 : 3
           },
-          children: n.photo ? /*#__PURE__*/jsxRuntimeExports.jsx("img", {
-            src: n.photo,
-            alt: "",
+          children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
             style: {
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }
-          }) : initialsOf(n.name)
-        })
-      }, n.id);
-    })]
+              width: size,
+              height: size,
+              borderRadius: '50%',
+              background: n.color || theme.colors.ink3,
+              color: theme.colors.onAccent,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: theme.fonts.mono,
+              fontSize: size * 0.32,
+              fontWeight: 500,
+              boxShadow: halo ? `${halo}, ${theme.shadow.md}` : theme.shadow.md,
+              outline: active ? `2px solid ${theme.colors.ink}` : bi === 2 ? '1.5px dashed color-mix(in srgb, var(--c-accent) 60%, transparent)' : 'none',
+              outlineOffset: 2,
+              overflow: 'hidden',
+              animation: `al-orbit-counter ${bands[bi].period}s linear infinite`
+            },
+            children: n.photo ? /*#__PURE__*/jsxRuntimeExports.jsx("img", {
+              src: n.photo,
+              alt: "",
+              style: {
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }
+            }) : initialsOf(n.name)
+          })
+        }, n.id);
+      })
+    }, bands[bi].key))]
   });
 }
 
@@ -20653,17 +21124,53 @@ function RecencyStat({
     })]
   });
 }
+
+// The Map's empty state gets the full orbit illustration (not the shared
+// RingMark) — this is the poster feature, so its "nothing yet" is a promise
+// of the thing itself. Voice and type mirror EmptyState.jsx exactly.
 function EmptyState({
   onAddPerson
 }) {
-  return /*#__PURE__*/jsxRuntimeExports.jsx(EmptyState$3, {
-    title: "Your orbit is empty",
-    subtitle: "Add people, then log moments \u2014 the closer someone orbits, the more recently you've connected.",
-    action: onAddPerson ? /*#__PURE__*/jsxRuntimeExports.jsx(Button, {
-      variant: "secondary",
-      onClick: onAddPerson,
-      children: "Add a person"
-    }) : undefined
+  return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+    className: "al-rise",
+    style: {
+      textAlign: 'center',
+      padding: '36px 28px 52px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 14
+    },
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx(OrbitArt, {
+      variant: "orbit",
+      size: 200
+    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        fontFamily: theme.fonts.serif,
+        fontSize: 18,
+        fontWeight: 500,
+        color: theme.colors.ink2
+      },
+      children: "Your orbit is empty"
+    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        fontFamily: theme.fonts.sans,
+        fontSize: 13,
+        color: theme.colors.ink3,
+        maxWidth: 250,
+        lineHeight: 1.55
+      },
+      children: "Add people, then log moments \u2014 the closer someone orbits, the more recently you\u2019ve connected."
+    }), onAddPerson && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        marginTop: 4
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(Button, {
+        variant: "secondary",
+        onClick: onAddPerson,
+        children: "Add a person"
+      })
+    })]
   });
 }
 
@@ -23804,6 +24311,19 @@ function App() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Time-of-day ambiance: stamp data-daypart so the paper palette follows
+  // the sun (see index.html). Re-checked every 15 minutes.
+  reactExports.useEffect(() => {
+    const stamp = () => {
+      const h = new Date().getHours();
+      const part = h < 5 ? 'night' : h < 11 ? 'morning' : h < 17 ? 'day' : h < 22 ? 'evening' : 'night';
+      document.documentElement.dataset.daypart = part;
+    };
+    stamp();
+    const id = setInterval(stamp, 15 * 60_000);
+    return () => clearInterval(id);
   }, []);
 
   // Re-lock whenever the app is backgrounded, so returning to it requires the
