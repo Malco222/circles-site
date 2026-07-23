@@ -491,10 +491,10 @@ function seedCircles() {
   return [{
     id: 'circle_work',
     name: 'Work',
-    color: '#3A5A6C',
+    color: '#6E7A48',
     parentId: null
   },
-  // ink blue
+  // warm olive
   {
     id: 'circle_school',
     name: "Kids' School",
@@ -526,7 +526,7 @@ function seedCircles() {
 }
 
 // Palette to offer when the user adds a new circle.
-const CIRCLE_PALETTE = ['#3A5A6C', '#B89548', '#5A7A4F', '#9C5C76', '#C97B3A', '#7B6CA6', '#4D7A82', '#8E5A3F', '#6B7A3A', '#A85C50'];
+const CIRCLE_PALETTE = ['#6E7A48', '#B89548', '#5A7A4F', '#9C5C76', '#C97B3A', '#8A6E4B', '#4D7A82', '#8E5A3F', '#6B7A3A', '#A85C50'];
 
 // storage.js
 //
@@ -858,6 +858,8 @@ const theme = {
     paper: 'var(--c-paper)',
     paperDeep: 'var(--c-paper-deep)',
     card: 'var(--c-card)',
+    cardRaised: 'var(--c-card-raised)',
+    cardEdge: 'var(--c-card-edge)',
     // Ink (warm near-black scale)
     ink: 'var(--c-ink)',
     ink2: 'var(--c-ink2)',
@@ -914,6 +916,7 @@ const theme = {
     body: '"Geist", -apple-system, system-ui, "Segoe UI", sans-serif'
   },
   tracking: {
+    tight: '-0.02em',
     // serif display headings
     label: '0.12em' // EVERY uppercase mono element
   },
@@ -927,15 +930,19 @@ const theme = {
     pill: 999
   },
   // Neutral shadows resolve to CSS vars so they deepen correctly in dark
-  // mode. `card`/`cardRaised` are two-pass (ambient + key light) for real
-  // physical depth on the wallet stack. Colored shadows stay literal.
+  // mode. well/resting/raised/floating are the four elevation tiers (see the
+  // elevation law in index.html); `card`/`cardRaised` are legacy aliases
+  // re-pointed at resting/floating. `orb` stays literal (night-sky only).
   shadow: {
     sm: 'var(--shadow-sm)',
     md: 'var(--shadow-md)',
     lg: 'var(--shadow-lg)',
+    well: 'var(--shadow-well)',
+    resting: 'var(--shadow-resting)',
+    raised: 'var(--shadow-raised)',
+    toast: 'var(--shadow-toast)',
     card: 'var(--shadow-card)',
-    cardRaised: 'var(--shadow-card-raised)',
-    accent: '0 8px 24px rgba(184, 89, 58, 0.4)'},
+    cardRaised: 'var(--shadow-card-raised)'},
   // Shared easing + duration tokens so motion feels consistent everywhere.
   ease: {
     spring: 'cubic-bezier(.32,.72,.24,1)',
@@ -1132,7 +1139,8 @@ function daysSinceTouch(person, now = Date.now()) {
 function makeManualInteraction({
   date,
   summary,
-  location
+  location,
+  kind
 } = {}) {
   return {
     id: makeId('int'),
@@ -1141,7 +1149,13 @@ function makeManualInteraction({
     // of the source !== 'calendar' check in its dedup pass.
     date: date || new Date().toISOString(),
     summary: (summary || '').trim(),
-    location: (location || '').trim()
+    location: (location || '').trim(),
+    // Optional moment kind ('met'|'coffee'|'call'|'text'|'email') from the
+    // one-tap chips; absent on past-meeting logs and pre-existing rows,
+    // which keep the generic "meeting" label.
+    ...(kind ? {
+      kind
+    } : {})
   };
 }
 
@@ -1439,19 +1453,19 @@ function deletePromote(circles, removedId) {
 // Three tones: personal / work / family.
 const TONE_META = {
   personal: {
-    color: '#9C5C76',
+    color: 'var(--tone-personal)',
     label: 'PERSONAL'
   },
   // dusty rose
   work: {
-    color: '#3A5A6C',
+    color: 'var(--tone-work)',
     label: 'WORK'
   },
-  // ink blue
+  // warm olive
   family: {
-    color: '#B8593A',
+    color: 'var(--tone-family)',
     label: 'FAMILY'
-  } // terracotta
+  } // terracotta (tracks accent)
 };
 
 // Back-compat: older data used home/past — collapse both to personal.
@@ -1673,7 +1687,7 @@ function loopHeadline$1({
   return 'Ask about ' + capWords$1(lowerLead(text), 10);
 }
 
-/** Short age of the loop from createdAt: today / yesterday / N days ago / N wk ago. */
+/** Short age of the loop from createdAt: today / yesterday / N days ago / N weeks ago. */
 function ageLabel(loop, now = Date.now()) {
   const t = new Date(loop?.createdAt ?? NaN).getTime();
   if (Number.isNaN(t)) return '';
@@ -1681,7 +1695,8 @@ function ageLabel(loop, now = Date.now()) {
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days} days ago`;
-  return `${Math.floor(days / 7)} wk ago`;
+  const w = Math.floor(days / 7);
+  return `${w} ${w === 1 ? 'week' : 'weeks'} ago`;
 }
 
 /**
@@ -2809,6 +2824,25 @@ function recencyLabel(iso, now = Date.now()) {
   return `${y} ${y === 1 ? 'year' : 'years'} ago`;
 }
 
+/** Compact recency for dense right edges — People/CircleDetail lists, Pulse rows.
+    Lowercase marginalia: '—' · 'now' · '5h' · 'today' · '3d' · '1w' · '4mo' · '2y'. */
+function compactAgoDays(days) {
+  if (!Number.isFinite(days)) return '—';
+  if (days < 1) return 'today';
+  if (days < 7) return `${Math.floor(days)}d`;
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  return `${Math.floor(days / 365)}y`;
+}
+function compactAgo(iso, now = Date.now()) {
+  if (!iso) return '—';
+  const ms = now - new Date(iso).getTime();
+  if (ms < 3_600_000) return 'now';
+  const hrs = Math.floor(ms / 3_600_000);
+  if (hrs < 24) return `${hrs}h`;
+  return compactAgoDays(hrs / 24);
+}
+
 // Days until the next birthday, from a 'MM-DD' or 'YYYY-MM-DD' string.
 function daysUntilBirthday(birthday, now) {
   const m = String(birthday || '').match(/(\d{1,2})-(\d{1,2})$/);
@@ -3656,7 +3690,7 @@ function Nav({
       paddingBottom: 'max(22px, env(safe-area-inset-bottom))',
       // Thin legibility veil (not a solid wall) — rows visibly glide
       // beneath the frosted pill instead of dying behind it.
-      background: 'linear-gradient(to top, var(--paper-veil) 20%, transparent)',
+      background: 'linear-gradient(to top, var(--paper-veil) 0%, color-mix(in srgb, var(--paper-veil) 72%, transparent) 44%, transparent 100%)',
       zIndex: 30
     },
     children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
@@ -3679,9 +3713,9 @@ function Nav({
           width: ind.width - 6,
           height: ind.height - 10,
           borderRadius: 14,
-          background: 'linear-gradient(180deg, var(--c-accent-soft), var(--c-accent-softer))',
-          boxShadow: 'inset 0 0.5px 0 var(--glass-edge)',
-          transition: 'left 440ms cubic-bezier(0.22, 1, 0.36, 1), width 440ms cubic-bezier(0.22, 1, 0.36, 1)',
+          background: 'var(--nav-active-bg)',
+          boxShadow: 'var(--nav-active-glow)',
+          transition: `left 440ms ${theme.ease.out}, width 440ms ${theme.ease.out}`,
           zIndex: 0,
           pointerEvents: 'none'
         }
@@ -3723,16 +3757,15 @@ function Nav({
           border: 'none'
         },
         children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: "al-machined al-fab",
           style: {
             width: 48,
             height: 48,
             borderRadius: 24,
-            background: theme.colors.accent,
             color: theme.colors.onAccent,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: theme.shadow.accent
+            justifyContent: 'center'
           },
           children: /*#__PURE__*/jsxRuntimeExports.jsx(Ico, {
             name: "mic",
@@ -3789,7 +3822,8 @@ function Tab({
       cursor: 'pointer',
       WebkitTapHighlightColor: 'transparent',
       background: 'transparent',
-      border: 'none'
+      border: 'none',
+      transition: `color 240ms ${theme.ease.out}, scale 200ms ${theme.ease.out}, filter 200ms ease`
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsx(Ico, {
       name: icon,
@@ -3800,7 +3834,7 @@ function Tab({
         fontSize: 10,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        fontWeight: active ? 500 : 400
+        fontWeight: 500
       },
       children: label
     })]
@@ -3933,6 +3967,7 @@ function AvatarPile({
 }) {
   const shown = items.slice(0, max);
   const overflow = items.length - max;
+  const ringCol = dark ? 'rgba(0,0,0,0.30)' : 'var(--c-card)';
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     style: {
       display: 'flex'
@@ -3949,7 +3984,10 @@ function AvatarPile({
         photo: a.photo,
         size: size,
         variant: a.linked === false ? 'dashed' : 'filled',
-        dark: dark
+        dark: dark,
+        style: {
+          boxShadow: `0 0 0 2px ${ringCol}, inset 0 1px 1.5px rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(0,0,0,0.07)`
+        }
       })
     }, a.id || a.name || i)), overflow > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -3964,7 +4002,7 @@ function AvatarPile({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 0 0 1.5px ' + theme.colors.card,
+        boxShadow: `0 0 0 2px ${ringCol}`,
         zIndex: 0,
         boxSizing: 'border-box'
       },
@@ -4004,7 +4042,7 @@ const base = {
   padding: '12px 20px',
   minHeight: 44,
   lineHeight: 1.2,
-  transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+  transition: `background 120ms ease, border-color 120ms ease, color 120ms ease, scale 200ms ${theme.ease.out}, filter 200ms ease`,
   WebkitAppearance: 'none',
   display: 'inline-flex',
   alignItems: 'center',
@@ -4086,6 +4124,14 @@ function Button({
 }) {
   const [hover, setHover] = reactExports.useState(false);
   const variantStyle = styleFor(variant, hover && !disabled);
+  const disabledStyle = !disabled ? null : variant === 'ghost' || variant === 'danger' ? {
+    opacity: 0.45
+  } : {
+    background: 'transparent',
+    color: theme.colors.ink3,
+    borderColor: theme.colors.rule,
+    boxShadow: 'none'
+  };
   return /*#__PURE__*/jsxRuntimeExports.jsx("button", {
     ...rest,
     type: type,
@@ -4096,7 +4142,7 @@ function Button({
       ...base,
       ...variantStyle,
       cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.55 : 1,
+      ...(disabledStyle || {}),
       ...(style || {})
     },
     children: children
@@ -4509,6 +4555,7 @@ function EmptyState$3({
         size: artSize
       })
     }) : /*#__PURE__*/jsxRuntimeExports.jsx(RingMark, {}), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-balance",
       style: {
         fontFamily: theme.fonts.serif,
         fontSize: 18,
@@ -4517,11 +4564,13 @@ function EmptyState$3({
       },
       children: title
     }), subtitle && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-balance",
       style: {
-        fontFamily: theme.fonts.sans,
-        fontSize: 13,
+        fontFamily: theme.fonts.serif,
+        fontStyle: 'italic',
+        fontSize: 14,
         color: theme.colors.ink3,
-        maxWidth: 250,
+        maxWidth: 260,
         lineHeight: 1.55
       },
       children: subtitle
@@ -4670,20 +4719,6 @@ function matchesQuery(person, q, circles) {
   }
   return false;
 }
-function timeSince$1(iso) {
-  if (!iso) return '—';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 0) return 'NOW';
-  const sec = Math.floor(ms / 1000);
-  const min = Math.floor(sec / 60);
-  const hr = Math.floor(min / 60);
-  const day = Math.floor(hr / 24);
-  if (day === 0) return hr <= 0 ? `${Math.max(min, 1)}M` : `${hr}H`;
-  if (day < 7) return `${day}D`;
-  if (day < 30) return `${Math.floor(day / 7)}W`;
-  if (day < 365) return `${Math.floor(day / 30)}MO`;
-  return `${Math.floor(day / 365)}Y`;
-}
 function humanWhen(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -4817,6 +4852,7 @@ function roleLine(person, circles) {
   if (primaryId) return getPathString(circles, primaryId);
   return '';
 }
+let listEnteredOnce = false;
 function PeopleList({
   people,
   circles,
@@ -4826,6 +4862,13 @@ function PeopleList({
   onCapture
 }) {
   const [q, setQ] = reactExports.useState('');
+  const [entrance, setEntrance] = reactExports.useState(() => !listEnteredOnce);
+  reactExports.useEffect(() => {
+    listEnteredOnce = true;
+    if (!entrance) return;
+    const t = setTimeout(() => setEntrance(false), 900);
+    return () => clearTimeout(t);
+  }, []);
   const filtered = reactExports.useMemo(() => people.filter(p => matchesQuery(p, q.trim(), circles)), [people, q, circles]);
   const sorted = reactExports.useMemo(() => [...filtered].sort((a, b) => {
     // Sort by recency: lastTouch covers both notes and auto-logged
@@ -4843,11 +4886,7 @@ function PeopleList({
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
-        fontFamily: theme.fonts.mono,
-        fontSize: 10,
-        color: theme.colors.ink3,
-        letterSpacing: 0.9,
-        textTransform: 'uppercase'
+        ...microLabel
       },
       children: ["ALL \xB7 ", people.length]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
@@ -4858,6 +4897,7 @@ function PeopleList({
         marginTop: 4
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("h1", {
+        className: "al-display",
         style: {
           margin: 0,
           fontFamily: theme.fonts.serif,
@@ -4865,7 +4905,7 @@ function PeopleList({
           fontWeight: 500,
           letterSpacing: '-0.02em',
           color: theme.colors.ink,
-          lineHeight: 1
+          lineHeight: 1.1
         },
         children: "People"
       }), /*#__PURE__*/jsxRuntimeExports.jsx("button", {
@@ -4880,8 +4920,8 @@ function PeopleList({
           alignItems: 'center',
           cursor: 'pointer',
           fontFamily: theme.fonts.serif,
-          fontStyle: 'italic',
           fontSize: 15,
+          fontWeight: 500,
           color: theme.colors.accent
         },
         children: "+ New"
@@ -4914,7 +4954,8 @@ function PeopleList({
       }) : null
     }), !q && nextSteps.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsx(NextStepStrip, {
       steps: nextSteps,
-      onSelect: onSelect
+      onSelect: onSelect,
+      entrance: entrance
     }), people.length === 0 ? /*#__PURE__*/jsxRuntimeExports.jsx(EmptyState$2, {
       onCapture: onCapture,
       onAdd: onAdd
@@ -4947,6 +4988,7 @@ function PeopleList({
           circles: circles,
           index: i,
           isLast: i === sorted.length - 1,
+          entrance: entrance,
           onClick: () => onSelect(p.id)
         }, p.id))
       })]
@@ -4958,27 +5000,29 @@ function PeopleList({
 
 function NextStepStrip({
   steps,
-  onSelect
+  onSelect,
+  entrance
 }) {
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+    className: entrance ? 'al-rise' : undefined,
     style: {
-      marginTop: 18
+      marginTop: 18,
+      ...(entrance ? {
+        '--i': 0
+      } : null)
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
-        fontFamily: theme.fonts.mono,
-        fontSize: 10,
-        color: theme.colors.ink3,
-        letterSpacing: 0.9,
-        textTransform: 'uppercase',
+        ...microLabel,
         marginBottom: 6
       },
       children: ["NEXT STEP \xB7 ", steps.length]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         background: theme.colors.card,
-        border: `1px solid ${theme.colors.rule}`,
+        border: `1px solid ${theme.colors.cardEdge}`,
         borderRadius: theme.radii.lg,
+        boxShadow: theme.shadow.resting,
         overflow: 'hidden'
       },
       children: steps.map((s, i) => /*#__PURE__*/jsxRuntimeExports.jsx(NextStepRow, {
@@ -5053,6 +5097,7 @@ function NextStepRow({
         minWidth: 0
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        className: step.kind !== 'drift' ? 'al-quote' : undefined,
         style: {
           fontFamily: theme.fonts.serif,
           fontStyle: step.kind === 'drift' ? 'italic' : 'normal',
@@ -5064,7 +5109,7 @@ function NextStepRow({
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical'
         },
-        children: step.kind !== 'drift' ? `"${step.title}"` : step.title
+        children: step.kind !== 'drift' ? `“${step.title}”` : step.title
       }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
           ...microLabel,
@@ -5087,7 +5132,8 @@ function PersonRow({
   circles,
   onClick,
   index = 0,
-  isLast = false
+  isLast = false,
+  entrance = false
 }) {
   const role = roleLine(person, circles);
   const latest = lastTouch(person);
@@ -5102,9 +5148,11 @@ function PersonRow({
         onClick && onClick();
       }
     },
-    className: "al-rise al-press",
+    className: entrance ? 'al-rise al-press' : 'al-press',
     style: {
-      '--i': Math.min(index, 12),
+      ...(entrance ? {
+        '--i': Math.min(index + 1, 8)
+      } : null),
       display: 'flex',
       alignItems: 'center',
       gap: 12,
@@ -5127,7 +5175,6 @@ function PersonRow({
           fontSize: 15,
           fontWeight: 500,
           color: theme.colors.ink,
-          letterSpacing: -0.2,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
@@ -5136,7 +5183,7 @@ function PersonRow({
       }), role && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
           fontFamily: theme.fonts.sans,
-          fontSize: 12.5,
+          fontSize: 13,
           color: theme.colors.ink3,
           marginTop: 2,
           overflow: 'hidden',
@@ -5153,7 +5200,7 @@ function PersonRow({
         color: theme.colors.ink3,
         letterSpacing: '0.12em'
       },
-      children: timeSince$1(latest)
+      children: compactAgo(latest)
     })]
   });
 }
@@ -5181,20 +5228,23 @@ function EmptyState$2({
         size: 160
       })
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-balance",
       style: {
         fontFamily: theme.fonts.serif,
-        fontStyle: 'italic',
         fontSize: 18,
-        color: theme.colors.ink
+        fontWeight: 500,
+        color: theme.colors.ink2
       },
       children: "No one here yet."
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-balance",
       style: {
         marginTop: 8,
         fontFamily: theme.fonts.serif,
+        fontStyle: 'italic',
         fontSize: 14,
         color: theme.colors.ink3,
-        lineHeight: 1.5,
+        lineHeight: 1.55,
         maxWidth: 280,
         marginLeft: 'auto',
         marginRight: 'auto'
@@ -6157,8 +6207,23 @@ function DebriefSheet({
 }) {
   const [text, setText] = reactExports.useState('');
   // Exit choreography: Save and Cancel both play al-sheet-down first; the
-  // real onSave/onClose fires from the root's onAnimationEnd.
+  // real onSave/onClose fires from the root's onAnimationEnd — with a
+  // belt-and-braces timeout (mirrors Briefing's CardExit) so the commit
+  // still lands if the animation never reports back (frozen background
+  // tab, interrupted animation). Whichever fires first wins; the ref
+  // guards against the save committing twice.
   const [closing, setClosing] = reactExports.useState(null); // { text } | { cancel: true }
+  const firedRef = reactExports.useRef(false);
+  const commitClose = reactExports.useCallback(c => {
+    if (firedRef.current || !c) return;
+    firedRef.current = true;
+    if (c.cancel) onClose();else onSave(c.text);
+  }, [onSave, onClose]);
+  reactExports.useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => commitClose(closing), 420);
+    return () => clearTimeout(timer);
+  }, [closing, commitClose]);
   const requestCancel = reactExports.useCallback(() => setClosing({
     cancel: true
   }), []);
@@ -6202,7 +6267,7 @@ function DebriefSheet({
     onAnimationEnd: e => {
       // Only the root's own exit animation hands off to the real action.
       if (!closing || e.target !== e.currentTarget) return;
-      if (closing.cancel) onClose();else onSave(closing.text);
+      commitClose(closing);
     },
     style: {
       position: 'fixed',
@@ -6524,9 +6589,10 @@ function ToastProvider({
             padding: '12px 16px',
             background: theme.colors.ink,
             color: theme.colors.paper,
-            borderRadius: 14,
-            boxShadow: theme.shadow.lg,
-            animation: leaving ? 'al-toast-out 200ms ease forwards' : `al-toast-in 320ms ${theme.ease.out}`
+            borderRadius: theme.radii.lg,
+            boxShadow: theme.shadow.toast,
+            transformOrigin: '50% 100%',
+            animation: leaving ? `al-toast-out 200ms ${theme.ease.standard} forwards` : `al-toast-in 380ms ${theme.ease.out}`
           },
           children: [/*#__PURE__*/jsxRuntimeExports.jsx("span", {
             style: {
@@ -6615,11 +6681,37 @@ const Label = ({
   },
   children: children
 });
+
+// Printed-surface law: cardSm rows (open loops, follow-ups, contact pills,
+// QUICK_KINDS chips, friendsSince/trend chips, intro pills) are repeated
+// printed controls — dark-sharpened edges only, never a shadow. The People
+// directory is an editorial list printed on the page; the timeline spine
+// stays flat.
 const cardSm = {
   background: theme.colors.card,
-  border: `1px solid ${theme.colors.rule}`,
+  border: `1px solid ${theme.colors.cardEdge}`,
   borderRadius: theme.radii.lg
 };
+
+// Timeline dot ink by moment kind — note terracotta, logged meeting amber,
+// auto calendar neutral.
+const KIND_DOT = {
+  note: 'var(--c-accent)',
+  meeting: 'var(--c-amber)',
+  cal: 'var(--c-ink4)'
+};
+const kindDotFor = item => KIND_DOT[item.kind === 'event' ? item.source === 'manual' ? 'meeting' : 'cal' : 'note'];
+
+// Timeline eyebrow word for a manual moment — the one-tap kinds speak their
+// own name; past-meeting logs and legacy rows stay "Meeting".
+const MOMENT_WORD = {
+  met: 'Met up',
+  coffee: 'Coffee',
+  call: 'Call',
+  text: 'Texted',
+  email: 'Emailed'
+};
+const momentWord = item => MOMENT_WORD[item.moment] || 'Meeting';
 function relativeEta(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -6656,17 +6748,6 @@ function exactWhen(iso) {
     minute: '2-digit'
   });
   return `${wk} · ${tm}`;
-}
-function timelineRelative(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const days = Math.floor((Date.now() - d) / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
 }
 
 // Highlight capitalized words (likely names) in the ASK FIRST quote
@@ -6815,7 +6896,8 @@ function GlanceCollapsed({
     const nowIso = new Date().toISOString();
     const interactions = [...(person.interactions || []), makeManualInteraction({
       date: nowIso,
-      summary: kind.label
+      summary: kind.label,
+      kind: kind.key
     })];
     const trimmed = (noteText || '').trim();
     const notes = trimmed ? [{
@@ -6939,12 +7021,11 @@ function GlanceCollapsed({
             paddingTop: 1
           },
           children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
-            className: "al-display",
             style: {
               fontFamily: theme.fonts.serif,
               fontSize: 22,
               fontWeight: 500,
-              letterSpacing: -0.4,
+              letterSpacing: theme.tracking.tight,
               lineHeight: 1.12,
               color: theme.colors.ink
             },
@@ -6993,7 +7074,7 @@ function GlanceCollapsed({
               title: trendChip.line || undefined,
               style: {
                 ...microLabel,
-                color: trendChip.state === 'warming' ? theme.colors.success : theme.colors.amber,
+                color: trendChip.state === 'warming' ? theme.colors.success : theme.colors.amberInk,
                 padding: '4px 10px',
                 background: theme.colors.card,
                 border: `1px solid ${theme.colors.rule}`,
@@ -7098,14 +7179,15 @@ function GlanceCollapsed({
           accent: true,
           children: "ASK FIRST"
         }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+          className: "al-quote al-balance",
           style: {
             fontFamily: theme.fonts.serif,
             fontSize: 22,
             lineHeight: 1.3,
             marginTop: 4,
-            letterSpacing: -0.3
+            letterSpacing: theme.tracking.tight
           },
-          children: ["\"", highlightNames(askFirst), "\""]
+          children: ["\u201C", highlightNames(askFirst), "\u201D"]
         }), openFollowUps.length > 1 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
           style: {
             fontSize: 11,
@@ -7122,19 +7204,20 @@ function GlanceCollapsed({
           accent: true,
           children: "RECOMMENDED NEXT STEP"
         }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: "al-balance",
           style: {
             marginTop: 4,
             fontFamily: theme.fonts.serif,
             fontSize: 17,
             lineHeight: 1.35,
             color: closingNextStep ? theme.colors.ink3 : theme.colors.ink,
-            letterSpacing: -0.2,
             textDecoration: closingNextStep ? 'line-through' : 'none',
             opacity: closingNextStep ? 0.35 : 1,
             transition: 'opacity 320ms ease 120ms'
           },
           children: nextStep.title
         }), nextStep.sub && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: nextStep.kind === 'prep' ? 'al-quote al-balance' : 'al-balance',
           style: {
             marginTop: 3,
             fontFamily: theme.fonts.serif,
@@ -7252,7 +7335,7 @@ function GlanceCollapsed({
               }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
                 style: {
                   fontFamily: theme.fonts.serif,
-                  fontSize: 12.5,
+                  fontSize: 13,
                   textDecoration: linked ? 'underline' : 'none',
                   textDecorationColor: linked ? 'var(--c-accent-soft)' : undefined,
                   textUnderlineOffset: 3
@@ -7360,7 +7443,7 @@ function GlanceCollapsed({
           }
         }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
           style: microLabel,
-          children: "Pull \xB7 timeline, follow-ups, all notes"
+          children: "Pull \xB7 timeline \xB7 follow-ups \xB7 notes"
         })]
       })]
     }), showDraft && /*#__PURE__*/jsxRuntimeExports.jsx(DraftMessageSheet, {
@@ -7544,7 +7627,6 @@ function GlanceDeep({
           minWidth: 0
         },
         children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
-          className: "al-display",
           style: {
             fontFamily: theme.fonts.serif,
             fontSize: 16,
@@ -7873,8 +7955,10 @@ function GlanceDeep({
       }) : /*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
           marginTop: 14,
-          paddingLeft: 14,
-          borderLeft: `1px solid ${theme.colors.rule}`
+          paddingLeft: 15,
+          backgroundImage: 'linear-gradient(to bottom, transparent 0, var(--c-rule) 20px, var(--c-rule) calc(100% - 30px), transparent 100%)',
+          backgroundSize: '1px 100%',
+          backgroundRepeat: 'no-repeat'
         },
         children: activity.map((item, i) => /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
           style: {
@@ -7884,12 +7968,13 @@ function GlanceDeep({
           children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
             style: {
               position: 'absolute',
-              left: -19,
+              left: -18.5,
               top: 12,
               width: 8,
               height: 8,
-              borderRadius: 4,
-              background: i === 0 ? theme.colors.accent : theme.colors.ink4
+              borderRadius: '50%',
+              background: kindDotFor(item),
+              boxShadow: i === 0 ? `0 0 0 2px var(--c-paper), 0 0 0 5px color-mix(in srgb, ${kindDotFor(item)} 16%, transparent)` : '0 0 0 2px var(--c-paper)'
             }
           }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
             style: {
@@ -7899,12 +7984,12 @@ function GlanceDeep({
               gap: 8
             },
             children: [/*#__PURE__*/jsxRuntimeExports.jsxs(Label, {
-              children: [timelineRelative(item.date), item.kind === 'event' && /*#__PURE__*/jsxRuntimeExports.jsxs("span", {
+              children: [recencyLabel(item.date), item.kind === 'event' && /*#__PURE__*/jsxRuntimeExports.jsxs("span", {
                 style: {
                   marginLeft: 6,
                   color: theme.colors.ink3
                 },
-                children: ["\xB7 ", item.source === 'manual' ? 'MEETING' : 'CAL']
+                children: ["\xB7 ", item.source === 'manual' ? momentWord(item).toUpperCase() : 'CALENDAR']
               })]
             }), item.kind === 'note' && /*#__PURE__*/jsxRuntimeExports.jsx("button", {
               onClick: () => deleteNote(item.id),
@@ -7934,6 +8019,7 @@ function GlanceDeep({
               children: "\xD7"
             })]
           }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+            className: item.kind === 'note' && i === 0 ? 'al-quote' : undefined,
             style: {
               fontFamily: theme.fonts.serif,
               fontSize: 13,
@@ -7943,7 +8029,7 @@ function GlanceDeep({
               fontStyle: item.kind === 'note' && i === 0 ? 'italic' : 'normal',
               whiteSpace: 'pre-wrap'
             },
-            children: item.kind === 'note' ? i === 0 ? `"${item.text}"` : item.text : item.text
+            children: item.kind === 'note' ? i === 0 ? `“${item.text}”` : item.text : item.text
           }), item.kind === 'event' && item.location && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
             style: {
               fontFamily: theme.fonts.serif,
@@ -8021,25 +8107,37 @@ function QuickCircles({
       children: topLevel.map(c => {
         const on = assigned.has(c.id);
         const isSugg = suggestion && suggestion.circleId === c.id;
-        return /*#__PURE__*/jsxRuntimeExports.jsx("button", {
+        return /*#__PURE__*/jsxRuntimeExports.jsxs("button", {
           onClick: () => toggleCircle(c.id),
           className: "al-press",
           "aria-pressed": on,
           title: isSugg ? `Suggested: ${suggestion.reason}` : undefined,
           "aria-label": `${on ? 'Remove from' : 'Add to'} ${c.name}${isSugg ? ` (suggested — ${suggestion.reason})` : ''}`,
           style: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
             padding: '5px 12px',
             borderRadius: theme.radii.pill,
-            border: on ? '1px solid transparent' : isSugg ? '1px dashed var(--c-accent)' : `1px solid ${theme.colors.rule}`,
-            background: on ? c.color || theme.colors.ink : isSugg ? theme.colors.accentSofter : 'transparent',
-            color: on ? theme.colors.onAccent : isSugg ? theme.colors.accent : theme.colors.ink2,
+            border: on ? `1px solid ${theme.colors.ink}` : isSugg ? '1px dashed var(--c-accent)' : `1px solid ${theme.colors.rule}`,
+            background: on ? theme.colors.ink : isSugg ? theme.colors.accentSofter : 'transparent',
+            color: on ? theme.colors.paper : isSugg ? theme.colors.accent : theme.colors.ink2,
             fontFamily: theme.fonts.sans,
             fontSize: 12,
             fontWeight: on ? 600 : 500,
             cursor: 'pointer',
             whiteSpace: 'nowrap'
           },
-          children: c.name
+          children: [/*#__PURE__*/jsxRuntimeExports.jsx("span", {
+            "aria-hidden": true,
+            style: {
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: c.color || theme.colors.ink4,
+              flexShrink: 0
+            }
+          }), c.name]
         }, c.id);
       })
     }), suggestion && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
@@ -8117,14 +8215,14 @@ function NotePadInput({
           padding: '8px 16px',
           minHeight: 36,
           borderRadius: theme.radii.pill,
-          border: 'none',
-          background: theme.colors.ink,
-          color: theme.colors.paper,
+          border: `1px solid ${empty ? theme.colors.rule : 'transparent'}`,
+          background: empty ? 'transparent' : theme.colors.ink,
+          color: empty ? theme.colors.ink3 : theme.colors.paper,
           fontFamily: theme.fonts.sans,
           fontSize: 13,
           fontWeight: 500,
           cursor: empty ? 'not-allowed' : 'pointer',
-          opacity: empty ? 0.45 : 1
+          transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease'
         },
         children: "Save"
       })]
@@ -8208,7 +8306,7 @@ function computeNextStep(person, nextEvent) {
     return {
       kind: 'prep',
       title: 'Handle the open thread before you see them.',
-      sub: `"${open[0].text}"`,
+      sub: `“${open[0].text}”`,
       followUpId: open[0].id
     };
   }
@@ -8292,10 +8390,11 @@ function useActivityFeed(person /* , events = [] */) {
     const interactions = (person.interactions || []).map(i => ({
       id: i.id,
       kind: 'event',
-      // Preserve source so the tag can render 'CAL' for auto-logged
-      // calendar events vs 'MEETING' for manual entries the user logged
-      // through the past-meeting form.
+      // Preserve source so the tag can render 'CALENDAR' for auto-logged
+      // events vs the moment word for manual entries; `moment` carries the
+      // one-tap kind ('call', 'coffee', …) when the row has one.
       source: i.source || 'calendar',
+      moment: i.kind,
       date: i.date,
       text: i.summary || (i.source === 'manual' ? 'Past meeting' : 'Calendar event'),
       location: i.location || ''
@@ -8372,14 +8471,16 @@ function ActivityTimeline({
         style: {
           overflow: 'hidden',
           minHeight: 0,
-          marginLeft: -6,
-          paddingLeft: 6
+          marginLeft: -8,
+          paddingLeft: 8
         },
         children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
           style: {
             marginTop: 8,
-            paddingLeft: 12,
-            borderLeft: `1px solid ${theme.colors.rule}`
+            paddingLeft: 13,
+            backgroundImage: 'linear-gradient(to bottom, transparent 0, var(--c-rule) 18px, var(--c-rule) calc(100% - 26px), transparent 100%)',
+            backgroundSize: '1px 100%',
+            backgroundRepeat: 'no-repeat'
           },
           children: [shown.map((item, i) => /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
             style: {
@@ -8390,12 +8491,13 @@ function ActivityTimeline({
               "aria-hidden": true,
               style: {
                 position: 'absolute',
-                left: -17,
+                left: -16,
                 top: 9,
                 width: 7,
                 height: 7,
-                borderRadius: 4,
-                background: i === 0 ? theme.colors.accent : theme.colors.ink4
+                borderRadius: '50%',
+                background: kindDotFor(item),
+                boxShadow: i === 0 ? `0 0 0 2px var(--c-paper), 0 0 0 5px color-mix(in srgb, ${kindDotFor(item)} 16%, transparent)` : '0 0 0 2px var(--c-paper)'
               }
             }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
               style: {
@@ -8405,7 +8507,7 @@ function ActivityTimeline({
                 gap: 6
               },
               children: [/*#__PURE__*/jsxRuntimeExports.jsx("span", {
-                children: timelineRelative(item.date)
+                children: recencyLabel(item.date)
               }), /*#__PURE__*/jsxRuntimeExports.jsx("span", {
                 style: {
                   color: theme.colors.ink4
@@ -8415,9 +8517,10 @@ function ActivityTimeline({
                 style: {
                   color: theme.colors.ink3
                 },
-                children: item.kind === 'event' ? item.source === 'manual' ? 'meeting' : 'cal' : 'note'
+                children: item.kind === 'event' ? item.source === 'manual' ? momentWord(item).toLowerCase() : 'calendar' : 'note'
               })]
             }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+              className: item.kind === 'note' && i === 0 ? 'al-quote' : undefined,
               style: {
                 marginTop: 2,
                 fontFamily: theme.fonts.serif,
@@ -8427,7 +8530,7 @@ function ActivityTimeline({
                 fontStyle: item.kind === 'note' && i === 0 ? 'italic' : 'normal',
                 whiteSpace: 'pre-wrap'
               },
-              children: item.kind === 'note' && i === 0 ? `"${item.text}"` : item.text
+              children: item.kind === 'note' && i === 0 ? `“${item.text}”` : item.text
             }), item.kind === 'event' && item.location && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
               style: {
                 marginTop: 1,
@@ -8443,7 +8546,7 @@ function ActivityTimeline({
               paddingLeft: 14,
               fontFamily: theme.fonts.serif,
               fontStyle: 'italic',
-              fontSize: 12.5,
+              fontSize: 13,
               color: theme.colors.ink3
             },
             children: ["+", remaining, " more"]
@@ -8628,14 +8731,14 @@ function LogMeetingForm({
           padding: '8px 16px',
           minHeight: 36,
           borderRadius: theme.radii.pill,
-          border: 'none',
-          background: theme.colors.ink,
-          color: theme.colors.paper,
+          border: `1px solid ${empty ? theme.colors.rule : 'transparent'}`,
+          background: empty ? 'transparent' : theme.colors.ink,
+          color: empty ? theme.colors.ink3 : theme.colors.paper,
           fontFamily: theme.fonts.sans,
           fontSize: 13,
           fontWeight: 500,
           cursor: empty ? 'not-allowed' : 'pointer',
-          opacity: empty ? 0.45 : 1
+          transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease'
         },
         children: "Log it"
       })
@@ -8866,7 +8969,7 @@ function CadenceChip({
       fontWeight: active ? 600 : 500,
       cursor: 'pointer',
       whiteSpace: 'nowrap',
-      transition: 'background 160ms ease, border-color 160ms ease, color 160ms ease'
+      transition: `background 160ms ease, border-color 160ms ease, color 160ms ease, scale 200ms ${theme.ease.out}, filter 200ms ease`
     },
     children: label
   });
@@ -11221,14 +11324,13 @@ function ParseButton({
       padding: '12px 20px',
       minHeight: 44,
       borderRadius: theme.radii.pill,
-      border: 'none',
-      background: disabled ? theme.colors.ruleStrong : theme.colors.ink,
-      color: theme.colors.paper,
+      border: `1px solid ${disabled ? theme.colors.rule : 'transparent'}`,
+      background: disabled ? 'transparent' : theme.colors.ink,
+      color: disabled ? theme.colors.ink3 : theme.colors.paper,
       fontFamily: theme.fonts.serif,
       fontSize: 15,
       cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.55 : 1,
-      transition: 'opacity 150ms'
+      transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease'
     },
     children: ["Parse", /*#__PURE__*/jsxRuntimeExports.jsx(Ico, {
       name: "arrow",
@@ -11257,6 +11359,7 @@ function LoadingPhase({
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx(ShimmerDot, {}), " PARSING"]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+      className: "al-quote",
       style: {
         marginTop: 18,
         fontFamily: theme.fonts.serif,
@@ -11267,7 +11370,7 @@ function LoadingPhase({
         letterSpacing: -0.2,
         whiteSpace: 'pre-wrap'
       },
-      children: ["\"", text, "\""]
+      children: ["\u201C", text, "\u201D"]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         margin: '24px 0',
@@ -11343,6 +11446,7 @@ function ErrorPhase({
         },
         children: "Show original"
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("p", {
+        className: "al-quote",
         style: {
           marginTop: 6,
           padding: 12,
@@ -11356,7 +11460,7 @@ function ErrorPhase({
           lineHeight: 1.45,
           whiteSpace: 'pre-wrap'
         },
-        children: ["\"", text, "\""]
+        children: ["\u201C", text, "\u201D"]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
@@ -11604,6 +11708,7 @@ function ReviewPhase({
         style: labelStyle,
         children: "YOU SAID"
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        className: "al-quote",
         style: {
           fontFamily: theme.fonts.serif,
           fontStyle: 'italic',
@@ -11611,7 +11716,7 @@ function ReviewPhase({
           color: theme.colors.ink,
           lineHeight: 1.5
         },
-        children: ["\"", originalText, "\""]
+        children: ["\u201C", originalText, "\u201D"]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -12006,7 +12111,7 @@ function Chip({
       gap: 6,
       whiteSpace: 'nowrap',
       cursor: 'pointer',
-      transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+      transition: `background 120ms ease, border-color 120ms ease, color 120ms ease, scale 200ms ${theme.ease.out}, filter 200ms ease`,
       ...(style || {})
     },
     children: children
@@ -12023,8 +12128,6 @@ function Chip({
 // We use the v4 mark file so old teal/navy renders never come back from
 // browser cache.
 
-// Relative on purpose: resolves at the domain root (dev, Capacitor) AND
-// under a subpath (GitHub Pages /circles-site/app/).
 const LOGO_MARK = './circles-logo-mark-v4.png';
 
 // Wordmark colors resolve to the theme CSS variables so the lockup adapts to
@@ -12075,12 +12178,13 @@ function CirclesLogo({
           flexShrink: 0
         }
       }), /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+        className: "al-display",
         style: {
-          fontFamily: '"Crimson Pro", Georgia, serif',
+          fontFamily: theme.fonts.serif,
           fontSize: Math.round(dim * 0.7),
           fontWeight: 600,
           color: INK,
-          letterSpacing: '-0.01em',
+          letterSpacing: '-0.02em',
           lineHeight: 1
         },
         children: "Circles"
@@ -12108,22 +12212,23 @@ function CirclesLogo({
         flexShrink: 0
       }
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-display",
       style: {
-        fontFamily: '"Crimson Pro", Georgia, serif',
+        fontFamily: theme.fonts.serif,
         fontSize: Math.round(dim * 0.28),
         fontWeight: 600,
         color: INK,
-        letterSpacing: '-0.01em',
+        letterSpacing: '-0.02em',
         lineHeight: 1
       },
       children: "Circles"
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
-        fontFamily: '"Inter", system-ui, sans-serif',
-        fontSize: Math.round(dim * 0.085),
+        fontFamily: theme.fonts.mono,
+        fontSize: 11,
         fontWeight: 500,
         color: MUTED,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.22em',
         textTransform: 'uppercase',
         marginTop: Math.round(dim * 0.02)
       },
@@ -12182,14 +12287,14 @@ function gatherStillTrueCandidates(people, opts = {}) {
   return out.slice(0, max);
 }
 
-/** Returns a relative-time string like "8mo ago" / "2y ago". */
+/** Returns a relative-time string like "8 months ago" / "2 years ago". */
 function relativeAge(ms) {
   const days = Math.floor(ms / 86_400_000);
-  if (days < 60) return `${days}d ago`;
+  if (days < 60) return `${days} days ago`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
+  if (months < 12) return `${months} months ago`;
   const years = Math.floor(months / 12);
-  return years === 1 ? '1y ago' : `${years}y ago`;
+  return years === 1 ? '1 year ago' : `${years} years ago`;
 }
 
 // outreach.js — the Loop Closer: after a call/text/email quick action, ask
@@ -13311,28 +13416,55 @@ function DepthMeter({
           fontFamily: theme.fonts.mono,
           fontSize: 11,
           color: theme.colors.ink3,
-          letterSpacing: 0.4,
+          letterSpacing: '0.12em',
           textAlign: 'right'
         },
         children: [memory.activeMonths, " ", memory.activeMonths === 1 ? 'mo' : 'mos', /*#__PURE__*/jsxRuntimeExports.jsx("br", {}), memory.totalMoments, " logged"]
       })]
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
+        position: 'relative',
         marginTop: 12,
-        height: 8,
+        height: 10,
         borderRadius: theme.radii.pill,
         background: theme.colors.paperDeep,
+        boxShadow: `${theme.shadow.well}, inset 0 0 0 1px var(--c-rule)`,
         overflow: 'hidden'
       },
-      children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
-          width: `${pct}%`,
+          width: pct > 0 ? `max(8px, ${pct}%)` : 0,
           height: '100%',
           borderRadius: theme.radii.pill,
-          background: theme.colors.accent,
-          transition: 'width 600ms cubic-bezier(0.22, 1, 0.36, 1)'
+          background: 'linear-gradient(90deg, color-mix(in srgb, var(--c-accent) 72%, var(--c-amber)) 0%, var(--c-accent) 100%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28)',
+          transition: `width 600ms ${theme.ease.out}`
         }
-      })
+      }), [25, 50, 75].map(t => /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+        "aria-hidden": "true",
+        style: {
+          position: 'absolute',
+          left: `${t}%`,
+          top: 0,
+          bottom: 0,
+          width: 1,
+          background: 'var(--c-card)',
+          opacity: 0.9
+        }
+      }, t)), pct > 4 && pct < 98 && /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+        "aria-hidden": "true",
+        style: {
+          position: 'absolute',
+          left: `calc(${pct}% - 7px)`,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 4,
+          height: 4,
+          borderRadius: '50%',
+          background: 'var(--c-on-accent)',
+          opacity: 0.9
+        }
+      })]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         marginTop: 8,
@@ -13396,7 +13528,9 @@ function InsightCard({
     return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
         ...cardStyle,
-        padding: '13px 14px'
+        padding: '13px 14px',
+        border: '1px solid color-mix(in srgb, var(--c-accent) 16%, var(--c-rule))',
+        boxShadow: `inset 0 1px 0 var(--glass-edge), ${theme.shadow.card}`
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
@@ -13567,7 +13701,7 @@ function HealthRing({
             transform: "rotate(-90 66 66)",
             style: {
               opacity: mounted ? 1 : 0,
-              transition: 'stroke-dashoffset 900ms cubic-bezier(0.22,1,0.36,1), opacity 500ms ease'
+              transition: `stroke-dashoffset 900ms ${theme.ease.out}, opacity 500ms ease`
             }
           }, s.key);
         })]
@@ -13659,7 +13793,8 @@ function MomentHeatmap({
   const CELL = 16; // pitch
   const SIZEW = 14 + WEEKS * CELL;
   const SIZEH = 16 + 7 * CELL;
-  const stepOpacity = count => count === 0 ? 1 : [0.28, 0.52, 0.76, 1][Math.min(3, Math.ceil(4 * count / Math.max(1, max)) - 1)];
+  const step = count => [32, 55, 78, 100][Math.min(3, Math.ceil(4 * count / Math.max(1, max)) - 1)];
+  const todayRow = (new Date().getDay() + 6) % 7;
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     style: {
       ...cardStyle,
@@ -13691,7 +13826,7 @@ function MomentHeatmap({
       },
       "aria-label": `Activity heatmap: ${total} moments over the last ${WEEKS} weeks`,
       role: "img",
-      children: [[['M', 1], ['W', 3], ['F', 5]].map(([ch, row]) => /*#__PURE__*/jsxRuntimeExports.jsx("text", {
+      children: [[['M', 0], ['W', 2], ['F', 4]].map(([ch, row]) => /*#__PURE__*/jsxRuntimeExports.jsx("text", {
         x: 4,
         y: 16 + row * CELL + 9,
         style: {
@@ -13700,31 +13835,45 @@ function MomentHeatmap({
           fill: 'var(--c-ink4)'
         },
         children: ch
-      }, ch)), monthTicks.map(t => /*#__PURE__*/jsxRuntimeExports.jsx("text", {
-        x: 14 + t.col * CELL,
-        y: 9,
-        style: {
-          fontFamily: theme.fonts.mono,
-          fontSize: 9,
-          letterSpacing: 0.5,
-          fill: 'var(--c-ink4)'
-        },
-        children: t.label
-      }, `${t.col}-${t.label}`)), grid.map((col, c) => col.map((count, r) => /*#__PURE__*/jsxRuntimeExports.jsx("rect", {
-        x: 14 + c * CELL,
-        y: 16 + r * CELL,
-        width: 12,
-        height: 12,
-        rx: 3,
-        fill: count === 0 ? 'var(--c-paper-deep)' : 'var(--c-accent)',
-        fillOpacity: stepOpacity(count),
-        style: {
-          animation: 'al-heat-in 300ms cubic-bezier(0.22,1,0.36,1) both',
-          animationDelay: `${c * 16}ms`,
-          transformOrigin: 'center',
-          transformBox: 'fill-box'
-        }
-      }, `${c}-${r}`)))]
+      }, ch)), monthTicks.map(t => /*#__PURE__*/jsxRuntimeExports.jsxs("g", {
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("text", {
+          x: 14 + t.col * CELL,
+          y: 9,
+          style: {
+            fontFamily: theme.fonts.mono,
+            fontSize: 9,
+            letterSpacing: '0.12em',
+            fill: 'var(--c-ink4)'
+          },
+          children: t.label
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("line", {
+          x1: 14 + t.col * CELL + 0.5,
+          y1: 11.5,
+          x2: 14 + t.col * CELL + 0.5,
+          y2: 14.5,
+          stroke: "var(--c-rule-strong)",
+          strokeWidth: 1
+        })]
+      }, `${t.col}-${t.label}`)), grid.map((col, c) => col.map((count, r) => {
+        if (c === WEEKS - 1 && r > todayRow) return null;
+        const isToday = c === WEEKS - 1 && r === todayRow;
+        return /*#__PURE__*/jsxRuntimeExports.jsx("rect", {
+          x: 14 + c * CELL,
+          y: 16 + r * CELL,
+          width: 12,
+          height: 12,
+          rx: 3,
+          fill: count === 0 ? 'var(--c-paper-deep)' : `color-mix(in srgb, var(--c-accent) ${step(count)}%, var(--c-paper-deep))`,
+          stroke: isToday ? 'var(--c-accent)' : undefined,
+          strokeWidth: isToday ? 1 : undefined,
+          style: {
+            animation: `al-heat-in 300ms ${theme.ease.out} both`,
+            animationDelay: `${c * 16}ms`,
+            transformOrigin: 'center',
+            transformBox: 'fill-box'
+          }
+        }, `${c}-${r}`);
+      }))]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
         marginTop: 6,
@@ -13734,18 +13883,17 @@ function MomentHeatmap({
         gap: 4,
         fontFamily: theme.fonts.mono,
         fontSize: 9,
-        letterSpacing: 0.5,
+        letterSpacing: '0.12em',
         color: theme.colors.ink4
       },
-      children: ["LESS", [0.28, 0.52, 0.76, 1].map(o => /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+      children: ["LESS", [32, 55, 78, 100].map(m => /*#__PURE__*/jsxRuntimeExports.jsx("span", {
         style: {
           width: 8,
           height: 8,
           borderRadius: 2,
-          background: 'var(--c-accent)',
-          opacity: o
+          background: `color-mix(in srgb, var(--c-accent) ${m}%, var(--c-paper-deep))`
         }
-      }, o)), "MORE"]
+      }, m)), "MORE"]
     })]
   });
 }
@@ -13919,16 +14067,17 @@ function HealthBucket({
           style: {
             fontFamily: theme.fonts.mono,
             fontSize: 11,
-            color: theme.colors.ink3
+            color: theme.colors.ink3,
+            letterSpacing: '0.12em'
           },
-          children: agoLabel(days)
+          children: compactAgoDays(days)
         })]
       }, person.id)), rows.length > 5 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
           fontFamily: theme.fonts.mono,
           fontSize: 10,
           color: theme.colors.ink4,
-          letterSpacing: 0.4
+          letterSpacing: '0.12em'
         },
         children: ["+", rows.length - 5, " more"]
       })]
@@ -13948,13 +14097,6 @@ function HealthBucket({
     })]
   });
 }
-function agoLabel(days) {
-  if (!Number.isFinite(days)) return 'never';
-  if (days >= 365) return `${Math.floor(days / 365)}y`;
-  if (days >= 30) return `${Math.floor(days / 30)}mo`;
-  if (days >= 7) return `${Math.floor(days / 7)}w`;
-  return `${days}d`;
-}
 const labelStyle$2 = {
   ...microLabel
 };
@@ -13964,7 +14106,7 @@ const miniLabel = {
 };
 const cardStyle = {
   background: theme.colors.card,
-  border: `1px solid ${theme.colors.rule}`,
+  border: `1px solid ${theme.colors.cardEdge}`,
   borderRadius: theme.radii.lg,
   boxShadow: theme.shadow.card,
   padding: '14px 16px'
@@ -14105,11 +14247,14 @@ function endOfWeek(fromDay) {
 
 const cardShellStyle = {
   background: theme.colors.card,
-  border: `1px solid ${theme.colors.rule}`,
+  border: `1px solid ${theme.colors.cardEdge}`,
   borderRadius: theme.radii.lg,
   padding: '12px 14px',
   boxShadow: theme.shadow.card
 };
+
+// Today's entrance cascade runs once per session — tab returns stay calm.
+let todayEnteredOnce = false;
 
 // Right-side eyebrow meta on the retention-arc cards — the microLabel voice
 // (mono 10 / '0.12em') without the uppercase, shared by every card in the
@@ -14139,6 +14284,7 @@ function CardExit({
   leaving,
   onGone,
   style,
+  className,
   children
 }) {
   const ref = reactExports.useRef(null);
@@ -14183,6 +14329,7 @@ function CardExit({
 
   return /*#__PURE__*/jsxRuntimeExports.jsx("div", {
     ref: ref,
+    className: className,
     onTransitionEnd: e => {
       if (leaving && e.target === e.currentTarget && e.propertyName === 'height') {
         fireGone();
@@ -14325,7 +14472,7 @@ function walletShadow(hex, strong) {
   const tint = strong ? 0.4 : 0.28;
   const y = strong ? 16 : 10;
   const blur = strong ? 34 : 22;
-  return `0 ${y}px ${blur}px -10px rgba(${c.r},${c.g},${c.b},${tint}), 0 2px 6px rgba(42,36,28,0.1)`;
+  return `inset 0 1px 0 rgba(255,255,255,${strong ? 0.22 : 0.16}), 0 ${y}px ${blur}px -10px rgba(${c.r},${c.g},${c.b},${tint}), 0 2px 6px rgba(42,36,28,0.1)`;
 }
 function firstName(name) {
   return (name || '').trim().split(/\s+/)[0] || name || 'them';
@@ -14380,6 +14527,7 @@ function SearchPill({
       borderRadius: theme.radii.pill,
       background: theme.colors.card,
       border: `1px solid ${theme.colors.rule}`,
+      boxShadow: theme.shadow.sm,
       color: theme.colors.ink2,
       cursor: 'pointer',
       fontFamily: theme.fonts.serif,
@@ -14462,7 +14610,7 @@ function QuickJumpOverlay({
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      paddingTop: 24
+      paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)'
     },
     children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       ref: overlayRef,
@@ -14575,8 +14723,7 @@ function QuickJumpOverlay({
             style: {
               fontFamily: theme.fonts.mono,
               fontSize: 10,
-              color: theme.colors.ink4,
-              letterSpacing: 0.5
+              color: theme.colors.ink4
             },
             children: "\u2192"
           })]
@@ -14723,6 +14870,20 @@ function Briefing({
   const cal = settings?.calendar;
   const range = settings?.briefing?.range || DEFAULT_RANGE;
   const [jumpOpen, setJumpOpen] = reactExports.useState(false);
+  const [entrance, setEntrance] = reactExports.useState(() => !todayEnteredOnce);
+  reactExports.useEffect(() => {
+    todayEnteredOnce = true;
+    if (!entrance) return;
+    const t = setTimeout(() => setEntrance(false), 900);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const rise = (i, style) => ({
+    className: entrance ? 'al-rise' : undefined,
+    style: entrance ? {
+      ...style,
+      '--i': Math.min(i, 8)
+    } : style
+  });
 
   // Unlock banner dismiss runs the shared CardExit choreography; the ack
   // mutation fires in onGone.
@@ -14820,6 +14981,7 @@ function Briefing({
             borderRadius: theme.radii.pill,
             background: theme.colors.card,
             border: `1px solid ${theme.colors.rule}`,
+            boxShadow: theme.shadow.sm,
             color: theme.colors.ink2,
             display: 'flex',
             alignItems: 'center',
@@ -14832,40 +14994,48 @@ function Briefing({
           })
         })]
       })]
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
-      style: {
-        marginTop: 16,
-        ...labelStyle$1
-      },
-      children: todayMonoLabel()
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
-      style: {
-        fontFamily: theme.fonts.serif,
-        fontSize: 32,
-        fontWeight: 500,
-        letterSpacing: '-0.02em',
-        lineHeight: 1.08,
-        marginTop: 6,
-        color: theme.colors.ink
-      },
-      children: uniquePeopleTitle(enriched)
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
-      style: {
-        marginTop: 4,
-        fontFamily: theme.fonts.serif,
-        fontStyle: 'italic',
-        fontSize: 16,
-        color: theme.colors.ink3,
-        lineHeight: 1.4
-      },
-      children: enriched.length > 0 ? 'Tap a card to bring it to the front.' : cal ? 'Nothing on your calendar this week.' : 'Connect a calendar to see who you’ll see.'
-    }), people.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsx(ScoreDial, {
-      people: people,
-      onOpenPulse: onOpenPulse
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+      ...rise(0),
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        style: {
+          marginTop: 16,
+          ...labelStyle$1
+        },
+        children: todayMonoLabel()
+      }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        className: "al-display al-balance",
+        style: {
+          fontFamily: theme.fonts.serif,
+          fontSize: 32,
+          fontWeight: 500,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.08,
+          marginTop: 6,
+          color: theme.colors.ink
+        },
+        children: uniquePeopleTitle(enriched)
+      }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        className: "al-balance",
+        style: {
+          marginTop: 4,
+          fontFamily: theme.fonts.serif,
+          fontStyle: 'italic',
+          fontSize: 16,
+          color: theme.colors.ink3,
+          lineHeight: 1.4
+        },
+        children: enriched.length > 0 ? 'Tap a card to bring it to the front.' : cal ? 'Nothing on your calendar this week.' : 'Connect a calendar to see who you’ll see.'
+      })]
+    }), people.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      ...rise(1),
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(ScoreDial, {
+        people: people,
+        onOpenPulse: onOpenPulse
+      })
     }), !settings?.contacts?.imported && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
-      style: {
+      ...rise(2, {
         marginTop: 22
-      },
+      }),
       children: /*#__PURE__*/jsxRuntimeExports.jsx(ConnectContactsCard, {
         onStart: onOpenContactsImport,
         onSkip: () => onUpdateSettings({
@@ -14878,9 +15048,9 @@ function Briefing({
       })
     }), newlyUnlockedInsights.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
       leaving: unlockLeaving,
-      style: {
+      ...rise(2, {
         marginTop: 22
-      },
+      }),
       onGone: () => {
         setUnlockLeaving(false);
         onAckInsights && onAckInsights();
@@ -14899,9 +15069,9 @@ function Briefing({
       })
     }), backupShown && /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
       leaving: backupLeaving,
-      style: {
+      ...rise(2, {
         marginTop: 22
-      },
+      }),
       onGone: () => {
         const commit = backupCommitRef.current;
         backupCommitRef.current = null;
@@ -14928,9 +15098,9 @@ function Briefing({
     }), people.length === 0 && Boolean(settings?.contacts?.imported) && /*#__PURE__*/jsxRuntimeExports.jsx(FirstPeopleCard, {
       onImport: () => onOpenContactsImport && onOpenContactsImport()
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-      style: {
+      ...rise(3, {
         marginTop: 22
-      },
+      }),
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
           display: 'flex',
@@ -15006,12 +15176,16 @@ function Briefing({
           })]
         })]
       })]
-    }), upNext && /*#__PURE__*/jsxRuntimeExports.jsx(UpNextBrief, {
-      event: upNext.event,
-      person: upNext.person,
-      brief: upNext.brief,
-      onOpen: () => onOpenPerson(upNext.person.id)
+    }), upNext && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      ...rise(4),
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(UpNextBrief, {
+        event: upNext.event,
+        person: upNext.person,
+        brief: upNext.brief,
+        onOpen: () => onOpenPerson(upNext.person.id)
+      })
     }), /*#__PURE__*/jsxRuntimeExports.jsx(RelationshipIntelligence, {
+      entrance: entrance,
       people: people,
       circles: circles,
       events: events,
@@ -15030,9 +15204,9 @@ function Briefing({
       onResolveLoop: onResolveLoop,
       onSnooze: onSnooze
     }), recentCaptures.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-      style: {
+      ...rise(8, {
         marginTop: 22
-      },
+      }),
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: labelStyle$1,
         children: "RECENT CAPTURES"
@@ -15044,6 +15218,7 @@ function Briefing({
           gap: 8
         },
         children: recentCaptures.map(c => /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+          className: "al-press",
           style: {
             ...cardShellStyle,
             padding: '10px 12px',
@@ -15063,6 +15238,7 @@ function Briefing({
               children: ["\u2192 ", c.name]
             })]
           }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+            className: "al-quote",
             style: {
               marginTop: 5,
               fontFamily: theme.fonts.serif,
@@ -15075,15 +15251,18 @@ function Briefing({
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical'
             },
-            children: ["\"", c.text, "\""]
+            children: ["\u201C", c.text, "\u201D"]
           })]
         }, c.id))
       })]
     }), people.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs("button", {
       onClick: () => onOpenPulse && onOpenPulse(),
-      className: "al-press",
+      className: entrance ? 'al-press al-rise' : 'al-press',
       style: {
         ...cardShellStyle,
+        ...(entrance ? {
+          '--i': 8
+        } : null),
         marginTop: 22,
         width: '100%',
         display: 'flex',
@@ -15400,7 +15579,7 @@ function EventCardPeek({
             fontFamily: theme.fonts.mono,
             fontSize: 10,
             opacity: 0.78,
-            letterSpacing: 0.5,
+            letterSpacing: '0.12em',
             whiteSpace: 'nowrap'
           },
           children: ev.timeExact
@@ -15471,7 +15650,8 @@ function EventCardFull({
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
           fontFamily: theme.fonts.mono,
-          fontSize: 9,
+          fontSize: 10,
+          letterSpacing: '0.12em',
           color: sub(0.7)
         },
         children: ["\u25CF NEXT", multi ? ` · ${ev.attendees.length} PEOPLE` : '']
@@ -15614,7 +15794,7 @@ function EventCardFull({
             fontFamily: theme.fonts.mono,
             fontSize: 10,
             color: sub(0.85),
-            letterSpacing: 0.4,
+            letterSpacing: '0.12em',
             flexShrink: 0,
             textTransform: 'lowercase'
           },
@@ -15711,9 +15891,9 @@ function AttendeeRow({
               alignItems: 'center',
               gap: 6,
               fontFamily: theme.fonts.mono,
-              fontSize: 9,
+              fontSize: 10,
               color: sub(0.5),
-              letterSpacing: 0.5,
+              letterSpacing: '0.12em',
               textTransform: 'uppercase'
             },
             children: ["not a contact", onAdd && /*#__PURE__*/jsxRuntimeExports.jsx("button", {
@@ -15755,6 +15935,7 @@ function AttendeeRow({
         },
         children: "ASK FIRST"
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        className: "al-quote",
         style: {
           fontFamily: theme.fonts.serif,
           fontStyle: 'italic',
@@ -15762,7 +15943,7 @@ function AttendeeRow({
           lineHeight: 1.4,
           marginTop: 2
         },
-        children: ["\"", a.headsUp, "\""]
+        children: ["\u201C", a.headsUp, "\u201D"]
       })]
     }), a.talkingPoints && a.talkingPoints.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -15904,14 +16085,17 @@ function gatherReconnects(people, takenIds, settings, max = MAX_RECONNECTS, now 
 function scoreBand(score) {
   if (score >= 67) return {
     color: 'var(--c-success)',
+    text: 'var(--c-success)',
     word: 'Strong'
   };
   if (score >= 34) return {
     color: 'var(--c-amber)',
+    text: 'var(--c-amber-ink)',
     word: 'Cooling'
   };
   return {
     color: 'var(--c-danger)',
+    text: 'var(--c-danger)',
     word: 'Drifting'
   };
 }
@@ -15964,6 +16148,8 @@ function ScoreDial({
     return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
         ...cardShellStyle,
+        background: theme.colors.cardRaised,
+        boxShadow: theme.shadow.raised,
         marginTop: 22,
         padding: '14px 16px'
       },
@@ -16044,9 +16230,11 @@ function ScoreDial({
         onOpenPulse && onOpenPulse();
       }
     },
-    className: "al-press",
+    className: "al-settle",
     style: {
       ...cardShellStyle,
+      background: theme.colors.cardRaised,
+      boxShadow: theme.shadow.raised,
       marginTop: 22,
       padding: '14px 16px 12px',
       cursor: 'pointer'
@@ -16063,10 +16251,8 @@ function ScoreDial({
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         className: "al-tnum",
         style: {
-          fontFamily: theme.fonts.mono,
-          fontSize: 9,
-          color: theme.colors.ink4,
-          letterSpacing: '0.12em'
+          ...microLabel,
+          color: theme.colors.ink4
         },
         children: ["THIS WEEK \xB7 ", week.total, " ", week.total === 1 ? 'MOMENT' : 'MOMENTS']
       })]
@@ -16083,7 +16269,26 @@ function ScoreDial({
           display: 'block'
         },
         "aria-hidden": "true",
-        children: [/*#__PURE__*/jsxRuntimeExports.jsx("g", {
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx("defs", {
+          children: /*#__PURE__*/jsxRuntimeExports.jsxs("linearGradient", {
+            id: "al-score-grad",
+            gradientUnits: "userSpaceOnUse",
+            x1: "154",
+            y1: "84",
+            x2: "84",
+            y2: "14",
+            children: [/*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+              offset: "0%",
+              stopColor: `color-mix(in srgb, ${band.color} 68%, var(--c-amber))`
+            }), /*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+              offset: "55%",
+              stopColor: band.color
+            }), /*#__PURE__*/jsxRuntimeExports.jsx("stop", {
+              offset: "100%",
+              stopColor: `color-mix(in srgb, ${band.color} 80%, var(--c-accent-ink))`
+            })]
+          })
+        }), /*#__PURE__*/jsxRuntimeExports.jsx("g", {
           style: {
             color: theme.colors.ink
           },
@@ -16112,7 +16317,7 @@ function ScoreDial({
           cy: 84,
           r: R,
           fill: "none",
-          stroke: "currentColor",
+          stroke: "url(#al-score-grad)",
           strokeWidth: SW,
           strokeLinecap: "round",
           strokeDasharray: `${valueLen} ${C}`,
@@ -16127,7 +16332,7 @@ function ScoreDial({
           cx: jewelX,
           cy: jewelY,
           r: 3.5,
-          fill: band.color,
+          fill: score >= 55 ? `color-mix(in srgb, ${band.color} 80%, var(--c-accent-ink))` : band.color,
           stroke: theme.colors.card,
           strokeWidth: 2,
           style: {
@@ -16172,12 +16377,13 @@ function ScoreDial({
           style: {
             ...microLabel,
             marginTop: 4,
-            color: band.color
+            color: band.text
           },
           children: band.word
         })]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-balance",
       style: {
         textAlign: 'center',
         fontFamily: theme.fonts.serif,
@@ -16188,15 +16394,25 @@ function ScoreDial({
         lineHeight: 1.4
       },
       children: coachLine(score, health)
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
+        position: 'relative',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
         gap: 6,
         padding: '0 8px'
       },
-      children: week.days.map(d => /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        "aria-hidden": true,
+        style: {
+          position: 'absolute',
+          left: 8,
+          right: 8,
+          top: 28,
+          height: 1,
+          background: 'var(--c-rule)'
+        }
+      }), week.days.map(d => /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
           flex: 1,
           display: 'flex',
@@ -16206,14 +16422,27 @@ function ScoreDial({
         },
         children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
           style: {
+            position: 'relative',
             width: '100%',
             maxWidth: 22,
-            height: 4 + Math.round(d.count / maxDay * 24),
+            height: 28,
             borderRadius: 4,
-            background: d.count === 0 ? 'var(--c-paper-deep)' : band.color,
-            opacity: d.count === 0 ? 1 : d.isToday ? 1 : 0.55,
-            transition: `height 400ms ${theme.ease.out}`
-          }
+            background: 'color-mix(in srgb, var(--c-paper-deep) 55%, transparent)',
+            overflow: 'hidden'
+          },
+          children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+            style: {
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: d.count === 0 ? 3 : 4 + Math.round(d.count / maxDay * 24),
+              borderRadius: d.count === 0 ? 2 : 4,
+              background: d.count === 0 ? 'var(--c-rule-strong)' : d.isToday ? band.color : `color-mix(in srgb, ${band.color} ${48 + Math.round(40 * (d.count / maxDay))}%, var(--c-paper-deep))`,
+              boxShadow: d.isToday && d.count > 0 ? 'inset 0 1px 0 rgba(255,255,255,0.30)' : 'none',
+              transition: `height 400ms ${theme.ease.out}`
+            }
+          })
         }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
           style: {
             fontFamily: theme.fonts.mono,
@@ -16223,7 +16452,7 @@ function ScoreDial({
           },
           children: d.label
         })]
-      }, d.key))
+      }, d.key))]
     })]
   });
 }
@@ -16240,7 +16469,7 @@ function BackupNudge({
   const toast = useToast();
   const status = backupStatus(lastExportAt);
   const never = status === 'never';
-  const tint = never ? theme.colors.accent : theme.colors.amber; // terracotta vs amber
+  const tint = never ? theme.colors.accent : theme.colors.amberInk; // terracotta vs amber
 
   async function go() {
     if (busy) return;
@@ -16372,25 +16601,38 @@ function UnlockBanner({
         onOpen();
       }
     },
-    className: "al-press al-rise",
+    className: "al-settle al-rise",
     style: {
       ...cardShellStyle,
       display: 'flex',
       alignItems: 'center',
       gap: 12,
-      background: theme.colors.accentSoft,
-      borderColor: 'transparent',
+      background: 'var(--wash-reward)',
+      borderColor: 'var(--wash-reward-brd)',
+      boxShadow: 'var(--shadow-raised), 0 10px 28px -10px color-mix(in srgb, var(--c-accent) 32%, transparent)',
       cursor: 'pointer'
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
-      style: {
-        fontSize: 16,
-        lineHeight: 1,
-        color: theme.colors.accent,
-        animation: `al-sparkle 600ms ${theme.ease.out} both`
-      },
       "aria-hidden": "true",
-      children: "\u2736"
+      style: {
+        width: 30,
+        height: 30,
+        borderRadius: '50%',
+        flexShrink: 0,
+        display: 'grid',
+        placeItems: 'center',
+        background: 'color-mix(in srgb, var(--c-accent) 12%, var(--c-card))',
+        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 35%, transparent), inset 0 1px 0 var(--glass-edge)',
+        color: theme.colors.accent
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+        style: {
+          fontSize: 15,
+          lineHeight: 1,
+          animation: `al-sparkle 600ms ${theme.ease.out} both`
+        },
+        children: "\u2736"
+      })
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
         flex: 1,
@@ -16433,6 +16675,7 @@ function UnlockBanner({
   });
 }
 function RelationshipIntelligence({
+  entrance = false,
   people,
   circles = [],
   events = [],
@@ -16608,6 +16851,18 @@ function RelationshipIntelligence({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [deal, askKeysSig]);
   const inHand = key => showAll || dealtSet.has(key);
+
+  // Entrance cascade continuation — stack cards pick up indices 5..8 on the
+  // once-per-session Today entrance; later reveals keep a plain al-rise.
+  let k = 0;
+  const cardRise = () => entrance ? {
+    className: 'al-rise',
+    style: {
+      '--i': Math.min(5 + k++, 8)
+    }
+  } : {
+    className: 'al-rise'
+  };
   const totalCount = callRecaps.length + captures.length + loops.length + discoveries.length + birthdays.length + anniversaries.length + openThreads.length + reconnects.length + memories.length + stillTrue.length;
   // Keep the section mounted for the "that's it for today" close even when
   // clearing the last ask empties the stack.
@@ -16627,6 +16882,7 @@ function RelationshipIntelligence({
         gap: 8
       },
       children: [discoveries.filter(d => inHand(d.key)).map(d => /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
+        ...cardRise(),
         leaving: leavingKeys.has(d.key),
         onGone: () => cardGone(d.key),
         children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
@@ -16714,6 +16970,7 @@ function RelationshipIntelligence({
       }, d.key)), callRecaps.filter(r => inHand(`recap-${r.entry.personId}-${r.entry.channel}-${r.entry.ts}`)).map(r => {
         const key = `recap-${r.entry.personId}-${r.entry.channel}-${r.entry.ts}`;
         return /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
+          ...cardRise(),
           leaving: leavingKeys.has(key),
           onGone: () => cardGone(key),
           children: /*#__PURE__*/jsxRuntimeExports.jsx(CallRecapCard, {
@@ -16746,32 +17003,36 @@ function RelationshipIntelligence({
             }
           })
         }, key);
-      }), captures.filter(c => inHand(c.key)).map(c => /*#__PURE__*/jsxRuntimeExports.jsx(CaptureCard, {
-        candidate: c,
-        onSave: noteText => {
-          haptics.success && haptics.success();
-          onCaptureSave && onCaptureSave({
-            event: c.event,
-            personId: c.person.id,
-            noteText
-          });
-          toast.show({
-            message: `Saved to ${firstName(c.person.name)} ✓`
-          });
-        },
-        onSkip: () => {
-          haptics.tap && haptics.tap();
-          onCaptureSkip && onCaptureSkip(c.key);
-          toast.show({
-            message: 'Skipped',
-            actionLabel: 'Undo',
-            onAction: () => onCaptureSkipUndo && onCaptureSkipUndo(c.key)
-          });
-        },
-        onOpen: () => onOpenPerson(c.person.id)
+      }), captures.filter(c => inHand(c.key)).map(c => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        ...cardRise(),
+        children: /*#__PURE__*/jsxRuntimeExports.jsx(CaptureCard, {
+          candidate: c,
+          onSave: noteText => {
+            haptics.success && haptics.success();
+            onCaptureSave && onCaptureSave({
+              event: c.event,
+              personId: c.person.id,
+              noteText
+            });
+            toast.show({
+              message: `Saved to ${firstName(c.person.name)} ✓`
+            });
+          },
+          onSkip: () => {
+            haptics.tap && haptics.tap();
+            onCaptureSkip && onCaptureSkip(c.key);
+            toast.show({
+              message: 'Skipped',
+              actionLabel: 'Undo',
+              onAction: () => onCaptureSkipUndo && onCaptureSkipUndo(c.key)
+            });
+          },
+          onOpen: () => onOpenPerson(c.person.id)
+        })
       }, c.key)), loops.filter(l => inHand(`loop-${l.loop.id}`)).map(l => {
         const key = `loop-${l.loop.id}`;
         return /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
+          ...cardRise(),
           leaving: leavingKeys.has(key),
           onGone: () => cardGone(key),
           children: /*#__PURE__*/jsxRuntimeExports.jsx(OpenLoopCard, {
@@ -16798,13 +17059,20 @@ function RelationshipIntelligence({
             }
           })
         }, key);
-      }), birthdays.map(b => /*#__PURE__*/jsxRuntimeExports.jsx(BirthdayCard, {
-        entry: b,
-        onOpen: () => onOpenPerson(b.person.id)
-      }, `bday-${b.person.id}`)), anniversaries.map(a => /*#__PURE__*/jsxRuntimeExports.jsx(FriendaversaryCard, {
-        entry: a,
-        onOpen: () => onOpenPerson(a.person.id)
+      }), birthdays.map(b => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        ...cardRise(),
+        children: /*#__PURE__*/jsxRuntimeExports.jsx(BirthdayCard, {
+          entry: b,
+          onOpen: () => onOpenPerson(b.person.id)
+        })
+      }, `bday-${b.person.id}`)), anniversaries.map(a => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        ...cardRise(),
+        children: /*#__PURE__*/jsxRuntimeExports.jsx(FriendaversaryCard, {
+          entry: a,
+          onOpen: () => onOpenPerson(a.person.id)
+        })
       }, `franniv-${a.person.id}`)), openThreads.filter(p => inHand(p.key)).map(p => /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
+        ...cardRise(),
         leaving: leavingKeys.has(p.key),
         onGone: () => cardGone(p.key),
         children: /*#__PURE__*/jsxRuntimeExports.jsx(PromptCard, {
@@ -16824,6 +17092,7 @@ function RelationshipIntelligence({
           }
         })
       }, p.key)), reconnects.filter(p => inHand(p.key)).map(p => /*#__PURE__*/jsxRuntimeExports.jsx(CardExit, {
+        ...cardRise(),
         leaving: leavingKeys.has(p.key),
         onGone: () => cardGone(p.key),
         children: /*#__PURE__*/jsxRuntimeExports.jsx(PromptCard, {
@@ -16842,14 +17111,20 @@ function RelationshipIntelligence({
             });
           }
         })
-      }, p.key)), memories.map(m => /*#__PURE__*/jsxRuntimeExports.jsx(MemoryCard, {
-        memory: m,
-        onOpen: () => onOpenPerson(m.person.id)
-      }, `mem-${m.person.id}-${m.date}`)), stillTrue.filter(s => inHand(s.key)).map(s => /*#__PURE__*/jsxRuntimeExports.jsx(StillTrueCard, {
-        candidate: s,
-        onConfirm: () => onConfirmDetail && onConfirmDetail(s.person.id, s.detail.id),
-        onRemove: () => onRemoveDetail && onRemoveDetail(s.person.id, s.detail.id),
-        onEdit: () => onOpenPerson(s.person.id)
+      }, p.key)), memories.map(m => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        ...cardRise(),
+        children: /*#__PURE__*/jsxRuntimeExports.jsx(MemoryCard, {
+          memory: m,
+          onOpen: () => onOpenPerson(m.person.id)
+        })
+      }, `mem-${m.person.id}-${m.date}`)), stillTrue.filter(s => inHand(s.key)).map(s => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        ...cardRise(),
+        children: /*#__PURE__*/jsxRuntimeExports.jsx(StillTrueCard, {
+          candidate: s,
+          onConfirm: () => onConfirmDetail && onConfirmDetail(s.person.id, s.detail.id),
+          onRemove: () => onRemoveDetail && onRemoveDetail(s.person.id, s.detail.id),
+          onEdit: () => onOpenPerson(s.person.id)
+        })
       }, s.key)), !showAll && done && /*#__PURE__*/jsxRuntimeExports.jsx(DealDoneCard, {
         waiting: waiting.length,
         onShowAll: () => setShowAll(true)
@@ -16881,8 +17156,8 @@ function DealDoneCard({
     className: "al-pop",
     style: {
       ...cardShellStyle,
-      background: theme.colors.accentSoft,
-      borderColor: 'transparent',
+      background: 'var(--wash-reward)',
+      borderColor: 'var(--wash-reward-brd)',
       padding: '16px 16px 14px',
       textAlign: 'center'
     },
@@ -17323,6 +17598,7 @@ function StillTrueCard({
         photo: person.photo,
         size: 28
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        className: "al-quote",
         style: {
           flex: 1,
           minWidth: 0,
@@ -17332,7 +17608,7 @@ function StillTrueCard({
           lineHeight: 1.4,
           fontStyle: 'italic'
         },
-        children: ["\"", detail.text, "\""]
+        children: ["\u201C", detail.text, "\u201D"]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -17560,6 +17836,7 @@ function MemoryCard({
         children: ["\u2192 ", who]
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: isNote ? 'al-quote' : undefined,
       style: {
         marginTop: 5,
         fontFamily: theme.fonts.serif,
@@ -17680,6 +17957,7 @@ function PromptCard({
           },
           children: person.name
         }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+          className: kind === 'open' ? 'al-quote' : undefined,
           style: {
             marginTop: 1,
             fontFamily: theme.fonts.serif,
@@ -17692,14 +17970,11 @@ function PromptCard({
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical'
           },
-          children: kind === 'open' ? `"${text}"` : text
+          children: kind === 'open' ? `“${text}”` : text
         }), extra && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
           style: {
-            marginTop: 2,
-            fontFamily: theme.fonts.mono,
-            fontSize: 9,
-            color: theme.colors.ink3,
-            letterSpacing: 0.4
+            ...metaRightStyle,
+            marginTop: 2
           },
           children: extra
         })]
@@ -17987,25 +18262,8 @@ function recentCapturesFrom(people) {
   all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   return all.slice(0, 3).map(c => ({
     ...c,
-    when: timeAgoCapture(c.date)
+    when: recencyLabel(c.date)
   }));
-}
-function timeAgoCapture(iso) {
-  try {
-    const d = new Date(iso);
-    const mins = Math.floor((Date.now() - d) / 60000);
-    if (mins < 60) return `${Math.max(1, mins)}M AGO`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}H AGO`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}D AGO`;
-    return d.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric'
-    }).toUpperCase();
-  } catch {
-    return '';
-  }
 }
 
 // ====================== CONNECT CALENDAR CARD =======================
@@ -18017,6 +18275,7 @@ function ConnectCard({
   const [label, setLabel] = reactExports.useState('');
   const [testing, setTesting] = reactExports.useState(false);
   const [error, setError] = reactExports.useState(null);
+  const off = !url.trim() || testing;
   async function handleConnect() {
     if (!url.trim()) return;
     setTesting(true);
@@ -18125,18 +18384,18 @@ function ConnectCard({
       },
       children: /*#__PURE__*/jsxRuntimeExports.jsx("button", {
         onClick: handleConnect,
-        disabled: !url.trim() || testing,
+        disabled: off,
         style: {
           padding: '12px 20px',
           minHeight: 44,
           borderRadius: theme.radii.pill,
-          background: theme.colors.ink,
-          color: theme.colors.paper,
-          border: 'none',
+          background: off ? 'transparent' : theme.colors.ink,
+          color: off ? theme.colors.ink3 : theme.colors.paper,
+          border: `1px solid ${off ? theme.colors.rule : 'transparent'}`,
           fontFamily: theme.fonts.serif,
           fontSize: 15,
-          cursor: !url.trim() || testing ? 'not-allowed' : 'pointer',
-          opacity: !url.trim() || testing ? 0.55 : 1
+          cursor: off ? 'not-allowed' : 'pointer',
+          transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease'
         },
         children: testing ? 'Testing…' : 'Connect'
       })
@@ -19352,7 +19611,7 @@ function CommandPalette({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '64px 16px 0'
+      padding: 'max(64px, env(safe-area-inset-top, 0px) + 20px) 16px 0'
     },
     children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       className: "al-glass al-pop",
@@ -19514,7 +19773,6 @@ function CirclesBrowse({
   circles,
   people,
   onOpenEdit,
-  onAdd,
   onOpenCircle,
   onReorder
 }) {
@@ -19574,36 +19832,8 @@ function CirclesBrowse({
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 12
-      },
-      children: [/*#__PURE__*/jsxRuntimeExports.jsx(CirclesLogo, {
-        lockup: "horizontal"
-      }), /*#__PURE__*/jsxRuntimeExports.jsx("button", {
-        onClick: onAdd,
-        style: {
-          background: 'transparent',
-          border: 'none',
-          padding: '14px 8px',
-          margin: '-14px -8px',
-          cursor: 'pointer',
-          fontFamily: theme.fonts.serif,
-          fontStyle: 'italic',
-          fontSize: 15,
-          color: theme.colors.accent
-        },
-        children: "+ New"
-      })]
-    }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
-      style: {
-        marginTop: 16,
-        fontFamily: theme.fonts.mono,
-        fontSize: 10,
-        color: theme.colors.ink3,
-        letterSpacing: 0.9,
-        textTransform: 'uppercase'
+        ...microLabel,
+        marginTop: 0
       },
       children: ["YOUR PEOPLE \xB7 ", totalPeople, " ACROSS ", totalCircles, " CIRCLES"]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
@@ -19615,14 +19845,15 @@ function CirclesBrowse({
         gap: 12
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("h1", {
+        className: "al-display",
         style: {
           margin: 0,
           fontFamily: theme.fonts.serif,
-          fontSize: 'clamp(28px, 7vw, 38px)',
+          fontSize: 32,
           fontWeight: 500,
-          letterSpacing: -0.5,
+          letterSpacing: '-0.02em',
           color: theme.colors.ink,
-          lineHeight: 1
+          lineHeight: 1.1
         },
         children: "Circles"
       }), /*#__PURE__*/jsxRuntimeExports.jsxs("button", {
@@ -19768,9 +19999,11 @@ function CircleCard({
 }) {
   const isFamily = circle.tone === 'family';
   const hasSubs = circle.subs.length > 0;
+  const wk = reactExports.useMemo(() => circle.activeCount > 0 ? dailyMomentCounts(circle.peopleInReach || [], 7) : null, [circle.activeCount, circle.peopleInReach]);
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     onClick: onClick,
     draggable: true,
+    className: "al-press",
     onDragStart: onDragStart,
     onDragOver: onDragOver,
     onDragLeave: onDragLeave,
@@ -19779,15 +20012,16 @@ function CircleCard({
     style: {
       padding: '14px 14px',
       background: isFamily ? theme.colors.accentSofter : theme.colors.card,
-      border: `1px ${isDragOver ? 'dashed' : 'solid'} ${isDragOver ? theme.colors.accent : isFamily ? theme.colors.accentSoft : theme.colors.rule}`,
+      border: `1px ${isDragOver ? 'dashed' : 'solid'} ${isDragOver ? theme.colors.accent : isFamily ? theme.colors.accentSoft : theme.colors.cardEdge}`,
       borderRadius: theme.radii.lg,
+      boxShadow: theme.shadow.resting,
       display: 'flex',
       flexDirection: 'column',
       gap: 0,
       cursor: 'grab',
       opacity: isDragging ? 0.45 : 1,
       transform: isDragOver ? 'scale(1.02)' : 'scale(1)',
-      transition: 'transform 120ms, border-color 120ms, opacity 120ms'
+      transition: 'transform 120ms, border-color 120ms, opacity 120ms, scale 200ms cubic-bezier(.22,1,.36,1), filter 200ms ease'
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -19890,15 +20124,40 @@ function CircleCard({
         size: 26,
         max: 4
       })
-    }), circle.activeCount > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+    }), circle.activeCount > 0 && wk && /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
         marginTop: 12,
-        fontFamily: theme.fonts.serif,
-        fontStyle: 'italic',
-        fontSize: 12,
-        color: theme.colors.accent
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8
       },
-      children: [circle.activeCount, " active this week"]
+      children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        style: {
+          fontFamily: theme.fonts.serif,
+          fontStyle: 'italic',
+          fontSize: 12,
+          color: theme.colors.accent
+        },
+        children: [circle.activeCount, " active this week"]
+      }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        "aria-hidden": true,
+        style: {
+          display: 'flex',
+          gap: 3,
+          alignItems: 'center',
+          flexShrink: 0
+        },
+        children: wk.days.map(d => /*#__PURE__*/jsxRuntimeExports.jsx("span", {
+          style: {
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            background: d.count > 0 ? 'var(--c-accent)' : 'transparent',
+            boxShadow: d.count > 0 ? d.isToday ? '0 0 0 2px color-mix(in srgb, var(--c-accent) 20%, transparent)' : 'none' : 'inset 0 0 0 1px var(--c-rule-strong)'
+          }
+        }, d.key))
+      })]
     })]
   });
 }
@@ -19953,17 +20212,6 @@ function require_getDescendantIds(circles, id) {
 //   - SUB-CIRCLES (if any) — each as a small card with count + avatar pile
 //   - PEOPLE — flat list of everyone in this circle's reach (direct + descendants)
 
-function timeSince(iso) {
-  if (!iso) return '—';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 0) return 'NOW';
-  const day = Math.floor(ms / 86_400_000);
-  if (day === 0) return 'TODAY';
-  if (day < 7) return `${day}D`;
-  if (day < 30) return `${Math.floor(day / 7)}W`;
-  if (day < 365) return `${Math.floor(day / 30)}MO`;
-  return `${Math.floor(day / 365)}Y`;
-}
 function CircleDetail({
   circleId,
   circles,
@@ -20167,11 +20415,7 @@ function CircleDetail({
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
         style: {
-          fontFamily: theme.fonts.mono,
-          fontSize: 10,
-          color: theme.colors.ink3,
-          letterSpacing: 0.9,
-          textTransform: 'uppercase',
+          ...microLabel,
           marginBottom: 8
         },
         children: "SUB-CIRCLES"
@@ -20187,6 +20431,7 @@ function CircleDetail({
           const subPeople = people.filter(p => (p.circleIds || []).includes(s.id));
           return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
             onClick: () => onOpenCircle && onOpenCircle(s.id),
+            className: "al-press",
             style: {
               padding: 12,
               background: theme.colors.card,
@@ -20250,11 +20495,7 @@ function CircleDetail({
       },
       children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
         style: {
-          fontFamily: theme.fonts.mono,
-          fontSize: 10,
-          color: theme.colors.ink3,
-          letterSpacing: 0.9,
-          textTransform: 'uppercase',
+          ...microLabel,
           marginBottom: 4
         },
         children: ["PEOPLE \xB7 ", allInReach.length]
@@ -20277,6 +20518,7 @@ function CircleDetail({
           const subPath = !isDirect ? (p.circleIds || []).map(id => circles.find(c => c.id === id)).filter(c => c && c.parentId === circleId).map(c => c.name).join(', ') : null;
           return /*#__PURE__*/jsxRuntimeExports.jsxs("li", {
             onClick: () => onOpenPerson(p.id),
+            className: "al-press",
             style: {
               display: 'flex',
               gap: 12,
@@ -20299,14 +20541,13 @@ function CircleDetail({
                   fontFamily: theme.fonts.serif,
                   fontSize: 16,
                   fontWeight: 500,
-                  color: theme.colors.ink,
-                  letterSpacing: -0.2
+                  color: theme.colors.ink
                 },
                 children: p.name
               }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
                 style: {
                   fontFamily: theme.fonts.sans,
-                  fontSize: 12.5,
+                  fontSize: 13,
                   color: theme.colors.ink3,
                   marginTop: 1
                 },
@@ -20318,9 +20559,9 @@ function CircleDetail({
                 fontFamily: theme.fonts.mono,
                 fontSize: 11,
                 color: theme.colors.ink3,
-                letterSpacing: 0.4
+                letterSpacing: '0.12em'
               },
-              children: timeSince(lastTouch(p))
+              children: compactAgo(lastTouch(p))
             })]
           }, p.id);
         })
@@ -20495,23 +20736,32 @@ function MapScreen({
   // 'new', not drifting (you can't drift from someone you just added).
   const driftingCount = reactExports.useMemo(() => graph.nodes.filter(n => n.kind === 'person' && Number.isFinite(n.daysSince) && n.daysSince > 45).length, [graph]);
   const neverCount = reactExports.useMemo(() => personNodes.filter(n => !Number.isFinite(n.daysSince)).length, [personNodes]);
+  const weekCount = reactExports.useMemo(() => personNodes.filter(n => Number.isFinite(n.daysSince) && n.daysSince <= 14).length, [personNodes]);
+  const monthCount = reactExports.useMemo(() => personNodes.filter(n => Number.isFinite(n.daysSince) && n.daysSince > 14 && n.daysSince <= 45).length, [personNodes]);
   const activeNode = activeId ? graph.nodes.find(n => n.id === activeId) : null;
   return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
     style: {
-      padding: '28px 22px 0'
+      padding: '54px 22px 0',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: 'min(calc(100dvh - env(safe-area-inset-top, 0px) - 110px), 764px)'
     },
-    children: [/*#__PURE__*/jsxRuntimeExports.jsx(CirclesLogo, {
-      lockup: "horizontal"
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        ...microLabel
+      },
+      children: personNodes.length > 0 ? `IN ORBIT · ${personNodes.length}` : 'YOUR ORBIT'
     }), /*#__PURE__*/jsxRuntimeExports.jsx("h1", {
+      className: "al-display",
       style: {
         margin: 0,
-        marginTop: 18,
+        marginTop: 4,
         fontFamily: theme.fonts.serif,
         fontWeight: 500,
-        fontSize: 'clamp(28px, 7vw, 38px)',
-        letterSpacing: -0.5,
+        fontSize: 32,
+        letterSpacing: '-0.02em',
         color: theme.colors.ink,
-        lineHeight: 1
+        lineHeight: 1.1
       },
       children: "Map"
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
@@ -20531,11 +20781,55 @@ function MapScreen({
       children: /*#__PURE__*/jsxRuntimeExports.jsx(EmptyState, {
         onAddPerson: onAddPerson
       })
-    }) : /*#__PURE__*/jsxRuntimeExports.jsx(OrbitMap, {
-      nodes: personNodes,
-      youInitials: youInitials,
-      activeId: activeId,
-      onTapNode: id => setActiveId(id === activeId ? null : id)
+    }) : /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 352
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsx(OrbitMap, {
+        nodes: personNodes,
+        youInitials: youInitials,
+        activeId: activeId,
+        onTapNode: id => setActiveId(id === activeId ? null : id)
+      })
+    }), personNodes.length > 0 && /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      "aria-hidden": "true",
+      style: {
+        marginTop: 'auto',
+        paddingTop: 20,
+        paddingBottom: 8
+      },
+      children: /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'stretch',
+          borderTop: `1px solid ${theme.colors.rule}`,
+          borderBottom: `1px solid ${theme.colors.rule}`,
+          padding: '12px 0'
+        },
+        children: [/*#__PURE__*/jsxRuntimeExports.jsx(OrbitStat, {
+          label: "This week",
+          value: weekCount,
+          dot: "var(--c-success)"
+        }), /*#__PURE__*/jsxRuntimeExports.jsx(Vr, {}), /*#__PURE__*/jsxRuntimeExports.jsx(OrbitStat, {
+          label: "This month",
+          value: monthCount,
+          dot: "var(--c-amber)"
+        }), /*#__PURE__*/jsxRuntimeExports.jsx(Vr, {}), /*#__PURE__*/jsxRuntimeExports.jsx(OrbitStat, {
+          label: "Drifting",
+          value: driftingCount,
+          dot: "var(--c-accent)"
+        }), neverCount > 0 && /*#__PURE__*/jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, {
+          children: [/*#__PURE__*/jsxRuntimeExports.jsx(Vr, {}), /*#__PURE__*/jsxRuntimeExports.jsx(OrbitStat, {
+            label: "New",
+            value: neverCount,
+            dot: "var(--c-ink4)"
+          })]
+        })]
+      })
     }), activeNode && activeNode.id !== YOU_NODE_ID && /*#__PURE__*/jsxRuntimeExports.jsx(NodeSheet, {
       graph: graph,
       node: activeNode,
@@ -20639,7 +20933,7 @@ function OrbitMap({
       position: 'relative',
       width: SIZE,
       height: SIZE,
-      margin: '18px auto 0'
+      margin: '0 auto'
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
@@ -20650,7 +20944,7 @@ function OrbitMap({
         pointerEvents: 'none',
         animation: 'al-breathe 6s ease-in-out infinite'
       }
-    }), /*#__PURE__*/jsxRuntimeExports.jsx("svg", {
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs("svg", {
       width: SIZE,
       height: SIZE,
       style: {
@@ -20658,15 +20952,26 @@ function OrbitMap({
         inset: 0
       },
       "aria-hidden": "true",
-      children: bands.map((b, i) => /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+      children: [bands.map((b, i) => /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
         cx: C,
         cy: C,
         r: b.r,
         fill: "none",
-        stroke: theme.colors.ruleStrong,
+        stroke: i === 2 ? 'color-mix(in srgb, var(--c-accent) 35%, var(--c-rule-strong))' : theme.colors.ruleStrong,
+        strokeOpacity: i === 0 ? 0.95 : i === 1 ? 0.6 : 0.9,
         strokeWidth: i === bands.length - 1 ? 1.5 : 1.25,
         strokeDasharray: i === bands.length - 1 ? '3 5' : undefined
-      }, i))
+      }, i)), /*#__PURE__*/jsxRuntimeExports.jsx("circle", {
+        cx: C,
+        cy: C,
+        r: R + 8,
+        fill: "none",
+        stroke: theme.colors.ruleStrong,
+        strokeOpacity: 0.4,
+        strokeWidth: 3,
+        strokeDasharray: "1 10.31",
+        strokeLinecap: "butt"
+      })]
     }), bands.map((b, i) => /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       "aria-hidden": "true",
       style: {
@@ -20702,11 +21007,11 @@ function OrbitMap({
         zIndex: 2
       },
       children: /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+        className: "al-machined",
         style: {
           width: '100%',
           height: '100%',
           borderRadius: '50%',
-          background: theme.colors.accent,
           color: theme.colors.onAccent,
           display: 'flex',
           alignItems: 'center',
@@ -20715,7 +21020,7 @@ function OrbitMap({
           fontSize: 11,
           fontWeight: 500,
           letterSpacing: '0.12em',
-          boxShadow: '0 0 0 5px color-mix(in srgb, var(--c-accent) 12%, transparent), 0 0 26px color-mix(in srgb, var(--c-accent) 50%, transparent), 0 3px 10px rgba(0,0,0,0.22)',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 5px color-mix(in srgb, var(--c-accent) 12%, transparent), 0 0 26px color-mix(in srgb, var(--c-accent) 50%, transparent), 0 3px 10px rgba(0,0,0,0.22)',
           animation: 'al-breathe 6s ease-in-out infinite'
         },
         children: youInitials
@@ -20775,15 +21080,18 @@ function OrbitMap({
               width: size,
               height: size,
               borderRadius: '50%',
-              background: n.color || theme.colors.ink3,
-              color: theme.colors.onAccent,
+              background: gradientByName(n.name),
+              color: 'rgba(40,34,26,0.82)',
+              // Avatar's exact ink-on-bead
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: theme.fonts.mono,
-              fontSize: size * 0.32,
+              fontFamily: theme.fonts.serif,
+              fontSize: size * 0.36,
+              // Avatar's exact ratio
               fontWeight: 500,
-              boxShadow: halo ? `${halo}, ${theme.shadow.md}` : theme.shadow.md,
+              letterSpacing: 0.3,
+              boxShadow: `${halo ? halo + ', ' : ''}inset 0 1px 1.5px rgba(255,255,255,0.45), 0 1px 2px rgba(0,0,0,0.18)`,
               outline: active ? `2px solid ${theme.colors.ink}` : bi === 2 ? '1.5px dashed color-mix(in srgb, var(--c-accent) 60%, transparent)' : 'none',
               outlineOffset: 2,
               overflow: 'hidden',
@@ -20841,7 +21149,7 @@ function NodeSheet({
       position: 'fixed',
       left: 0,
       right: 0,
-      bottom: 96,
+      bottom: 'calc(max(22px, env(safe-area-inset-bottom, 0px)) + 78px)',
       margin: '0 auto',
       width: 'calc(100% - 28px)',
       maxWidth: 374,
@@ -20927,7 +21235,7 @@ function NodeSheet({
       }), trendChip && /*#__PURE__*/jsxRuntimeExports.jsxs("span", {
         title: trendChip.line || undefined,
         style: {
-          color: trendChip.state === 'warming' ? theme.colors.success : theme.colors.amber
+          color: trendChip.state === 'warming' ? theme.colors.success : theme.colors.amberInk
         },
         children: [trendChip.glyph, " ", trendChip.label]
       }), node.connector && /*#__PURE__*/jsxRuntimeExports.jsxs("span", {
@@ -21125,6 +21433,10 @@ function RecencyStat({
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Small atoms
+// ─────────────────────────────────────────────────────────────────────────
+
 // The Map's empty state gets the full orbit illustration (not the shared
 // RingMark) — this is the poster feature, so its "nothing yet" is a promise
 // of the thing itself. Voice and type mirror EmptyState.jsx exactly.
@@ -21170,6 +21482,56 @@ function EmptyState({
         onClick: onAddPerson,
         children: "Add a person"
       })
+    })]
+  });
+}
+function Vr() {
+  return /*#__PURE__*/jsxRuntimeExports.jsx("div", {
+    "aria-hidden": "true",
+    style: {
+      width: 1,
+      background: theme.colors.rule
+    }
+  });
+}
+function OrbitStat({
+  label,
+  value,
+  dot
+}) {
+  return /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+    style: {
+      flex: 1,
+      textAlign: 'center'
+    },
+    children: [/*#__PURE__*/jsxRuntimeExports.jsx("div", {
+      className: "al-tnum",
+      style: {
+        fontFamily: theme.fonts.serif,
+        fontSize: 22,
+        fontWeight: 600,
+        lineHeight: 1.1,
+        color: theme.colors.ink
+      },
+      children: value
+    }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
+      style: {
+        ...microLabel,
+        marginTop: 3,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5
+      },
+      children: [/*#__PURE__*/jsxRuntimeExports.jsx("span", {
+        "aria-hidden": "true",
+        style: {
+          width: 5,
+          height: 5,
+          borderRadius: '50%',
+          background: dot,
+          flexShrink: 0
+        }
+      }), label]
     })]
   });
 }
@@ -22576,6 +22938,7 @@ function Settings({
     }
   });
   const [perm, setPerm] = reactExports.useState(notificationPermission());
+  const off = perm === 'denied';
   const askPermission = async () => {
     haptics.tap();
     const p = await requestNotificationPermission();
@@ -22695,13 +23058,15 @@ function Settings({
         })
       })
     }), /*#__PURE__*/jsxRuntimeExports.jsx("h1", {
+      className: "al-display",
       style: {
         fontFamily: theme.fonts.serif,
         fontSize: 32,
         fontWeight: 500,
         color: theme.colors.ink,
         margin: '0 0 24px',
-        letterSpacing: '-0.02em'
+        letterSpacing: '-0.02em',
+        lineHeight: 1.1
       },
       children: "Settings"
     }), /*#__PURE__*/jsxRuntimeExports.jsx(Section, {
@@ -22758,14 +23123,14 @@ function Settings({
         sub: perm === 'denied' ? 'Blocked in your browser settings — re-enable there to get nudges.' : 'Morning brief, pre-meeting prep, and birthday reminders.',
         children: /*#__PURE__*/jsxRuntimeExports.jsx("button", {
           onClick: askPermission,
-          disabled: perm === 'denied',
+          disabled: off,
           className: "al-press",
           style: {
             ...miniBtnStyle,
-            background: theme.colors.accent,
-            color: theme.colors.onAccent,
-            borderColor: theme.colors.accent,
-            opacity: perm === 'denied' ? 0.5 : 1
+            background: off ? 'transparent' : theme.colors.ink,
+            color: off ? theme.colors.ink3 : theme.colors.paper,
+            borderColor: off ? theme.colors.rule : 'transparent',
+            cursor: off ? 'not-allowed' : 'pointer'
           },
           children: "Enable"
         })
@@ -23073,7 +23438,8 @@ function Settings({
               gap: 10,
               padding: '8px 10px',
               background: theme.colors.paperDeep,
-              borderRadius: theme.radii.md
+              borderRadius: theme.radii.md,
+              boxShadow: theme.shadow.well
             },
             children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
               style: {
@@ -23292,7 +23658,7 @@ function Section({
     }), /*#__PURE__*/jsxRuntimeExports.jsx("div", {
       style: {
         background: theme.colors.card,
-        border: `1px solid ${theme.colors.rule}`,
+        border: `1px solid ${theme.colors.cardEdge}`,
         borderRadius: theme.radii.lg,
         boxShadow: theme.shadow.card,
         overflow: 'hidden'
@@ -23499,7 +23865,7 @@ function Onboarding({
       background: theme.colors.paper,
       display: 'flex',
       flexDirection: 'column',
-      padding: '28px 22px'
+      padding: 'max(28px, env(safe-area-inset-top, 0px) + 12px) 22px max(28px, env(safe-area-inset-bottom, 0px) + 16px)'
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -23940,14 +24306,13 @@ function PrimaryButton({
       padding: '14px 18px',
       borderRadius: theme.radii.pill,
       border: 'none',
-      background: theme.colors.accent,
-      color: theme.colors.onAccent,
+      background: disabled ? theme.colors.accentSoft : theme.colors.accent,
+      color: disabled ? theme.colors.accentInk : theme.colors.onAccent,
       fontFamily: theme.fonts.sans,
       fontSize: 15,
       fontWeight: 600,
       cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.45 : 1,
-      boxShadow: '0 2px 10px rgba(184,89,58,0.25)'
+      boxShadow: disabled ? 'none' : '0 2px 10px rgba(184,89,58,0.25)'
     },
     children: children
   });
@@ -24485,7 +24850,7 @@ function App() {
       root.dataset.theme = dark ? 'dark' : 'light';
       // Keep the iOS status-bar tint in step with the surface behind it.
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', dark ? '#17140f' : '#f6f1e7');
+      if (meta) meta.setAttribute('content', dark ? '#121008' : '#f6f1e7');
     };
     apply();
     if (themePref === 'system') {
@@ -24907,7 +25272,7 @@ function App() {
   reactExports.useEffect(() => {
     prevDepthRef.current = curDepth;
   }, [viewKey, curDepth]);
-  const viewAnim = dir === 'fwd' ? 'al-view-in 320ms cubic-bezier(.22,1,.36,1) both' : dir === 'back' ? 'al-view-in-back 320ms cubic-bezier(.22,1,.36,1) both' : 'al-fade 260ms ease both';
+  const viewAnim = dir === 'fwd' ? `al-view-in 320ms ${theme.ease.out} both` : dir === 'back' ? `al-view-in-back 320ms ${theme.ease.out} both` : 'al-fade 260ms ease both';
 
   // ---- pull-to-refresh (Today only) ----
   // Drag down from the top of the briefing scroll to re-sync the calendar.
@@ -24980,6 +25345,7 @@ function App() {
               inset: 0,
               overflowY: 'auto',
               overflowX: 'hidden',
+              paddingTop: 'env(safe-area-inset-top, 0px)',
               paddingBottom: 110
             },
             children: [/*#__PURE__*/jsxRuntimeExports.jsx(PullIndicator, {
@@ -24990,7 +25356,7 @@ function App() {
                 animation: viewAnim,
                 willChange: 'transform, opacity',
                 transform: pull ? `translateY(${pull}px)` : undefined,
-                transition: pull ? 'none' : 'transform 260ms cubic-bezier(.22,1,.36,1)'
+                transition: pull ? 'none' : `transform 260ms ${theme.ease.out}`
               },
               children: /*#__PURE__*/jsxRuntimeExports.jsxs(ErrorBoundary, {
                 compact: true,
@@ -25123,9 +25489,6 @@ function App() {
                   circles: circles,
                   people: people,
                   onOpenEdit: () => setView({
-                    kind: 'circles_edit'
-                  }),
-                  onAdd: () => setView({
                     kind: 'circles_edit'
                   }),
                   onOpenCircle: id => setView({
@@ -25291,7 +25654,7 @@ function PullIndicator({
   return /*#__PURE__*/jsxRuntimeExports.jsx("div", {
     style: {
       position: 'absolute',
-      top: 6,
+      top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
       left: 0,
       right: 0,
       display: 'flex',
@@ -25369,7 +25732,7 @@ function SplashState({
       justifyContent: 'center',
       background: theme.colors.paper,
       gap: 22,
-      animation: exiting ? 'al-splash-out 460ms cubic-bezier(.4,0,.2,1) forwards' : undefined
+      animation: exiting ? `al-splash-out 460ms ${theme.ease.standard} forwards` : undefined
     },
     children: [/*#__PURE__*/jsxRuntimeExports.jsxs("div", {
       style: {
@@ -25388,7 +25751,7 @@ function SplashState({
           borderRadius: '50%',
           border: `2px solid ${theme.colors.accent}`,
           opacity: 0,
-          animation: `al-ripple 2.4s cubic-bezier(.22,1,.36,1) ${i * 0.6}s infinite`
+          animation: `al-ripple 2.4s ${theme.ease.out} ${i * 0.6}s infinite`
         }
       }, i)), /*#__PURE__*/jsxRuntimeExports.jsx("img", {
         src: LOGO_MARK,
@@ -25399,7 +25762,7 @@ function SplashState({
           position: 'relative',
           display: 'block',
           objectFit: 'contain',
-          animation: 'al-splash-pop 720ms cubic-bezier(.22,1,.36,1) both'
+          animation: `al-splash-pop 720ms ${theme.ease.out} both`
         }
       })]
     }), /*#__PURE__*/jsxRuntimeExports.jsxs("div", {
