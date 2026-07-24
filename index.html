@@ -135,19 +135,42 @@
     border: 1px solid rgba(255,255,255,0.5);
   }
   .screen .date { margin-bottom: 4px; }
-  .screen h3 { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: -0.02em; margin: 0 0 16px; }
-  .wcard {
-    border-radius: 14px; padding: 11px 14px; margin-bottom: 9px; color: #f6f1e7;
-    font-size: 12.5px; display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 10px 22px -10px rgba(42,36,28,0.3);
+  .screen h3 { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: -0.02em; margin: 0 0 14px; }
+  /* The Circle Score instrument — mirrors the app's raised hero card. */
+  .score {
+    background: #fefcf5; border: 1px solid var(--rule); border-radius: 16px;
+    padding: 12px 14px 10px; margin-bottom: 10px; text-align: center;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.7),
+      0 2px 6px rgba(42,36,28,0.10),
+      0 14px 32px rgba(42,36,28,0.16);
   }
-  .wcard .t { font-family: var(--mono); font-size: 10px; opacity: 0.82; white-space: nowrap; }
+  .score .lbls { display: flex; justify-content: space-between; align-items: baseline; }
+  .score .lbls .mono-label { font-size: 8.5px; white-space: nowrap; }
+  .score svg { display: block; margin: 2px auto 0; }
+  .score .num { font-family: var(--serif); font-weight: 600; font-size: 30px; fill: var(--ink); }
+  .score .pct { font-family: var(--serif); font-size: 14px; fill: var(--ink); }
+  .score .band { font-family: var(--mono); font-size: 8px; letter-spacing: 0.12em; fill: #5c6e46; }
+  .bars { display: flex; gap: 5px; justify-content: center; align-items: flex-end; margin-top: 8px; }
+  .bars i {
+    display: block; width: 11px; border-radius: 3px; position: relative;
+    background: rgba(211, 201, 182, 0.35); height: 20px; overflow: hidden;
+  }
+  .bars i::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px;
+    background: var(--bar, #c2986a); height: var(--h, 3px);
+  }
+  .bars i.today::after { background: #b8811f; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+  .wcard {
+    border-radius: 14px; padding: 11px 14px; margin-bottom: 10px; color: #f6f1e7;
+    font-size: 12.5px; display: flex; align-items: center; gap: 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 22px -10px rgba(42,36,28,0.3);
+  }
+  .wcard .t { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; opacity: 0.82; white-space: nowrap; }
   .wcard .s { font-family: var(--serif); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wcard .av { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; flex: none;
     box-shadow: inset 0 1px 1px rgba(255,255,255,0.45); }
   .w1 { background: linear-gradient(157deg, #b07ea0, #9c6f93); }
-  .w2 { background: linear-gradient(157deg, #c79b54, #b98e45); color: #3a2e16; }
-  .w3 { background: linear-gradient(157deg, #6f8a5e, #5f7a4f); }
   .meter {
     margin-top: 14px; background: var(--card); border: 1px solid var(--rule);
     border-radius: 16px; padding: 13px 15px; box-shadow: 0 8px 18px -12px rgba(42,36,28,0.25);
@@ -155,8 +178,11 @@
   .meter .row { display: flex; justify-content: space-between; align-items: baseline; }
   .meter .tier { font-family: var(--serif); font-weight: 600; font-size: 19px; margin-top: 2px; }
   .meter .n { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-align: right; }
-  .track { margin-top: 11px; height: 7px; border-radius: 100px; background: var(--paper-2); overflow: hidden; }
-  .fill { height: 100%; width: 64%; border-radius: 100px; background: linear-gradient(90deg, rgba(184,89,58,0.82), var(--accent)); }
+  .track { margin-top: 11px; height: 8px; border-radius: 100px; background: var(--paper-2);
+    box-shadow: inset 0 1px 2px rgba(42,36,28,0.08), inset 0 0 0 1px var(--rule); overflow: hidden; }
+  .fill { height: 100%; width: 64%; border-radius: 100px;
+    background: linear-gradient(90deg, #b8811f, var(--accent));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.28); }
   .meter .hint { margin-top: 8px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-3); }
 
   /* ---- Sections ---- */
@@ -241,14 +267,46 @@
         </div>
       </div>
 
-      <!-- Phone mock -->
+      <!-- Phone mock — mirrors the app's Today screen (wave-3) -->
       <div class="phone" aria-hidden="true">
         <div class="screen">
           <div class="mono-label date">SATURDAY · JUNE 6</div>
           <h3>Four people up.</h3>
-          <div class="wcard w1"><span class="t">1:00 PM</span><span class="s">Lunch with Dave</span><span class="av" style="background:linear-gradient(150deg,#c9a3d8,#a878c0)"></span></div>
-          <div class="wcard w2"><span class="t">4:00 PM</span><span class="s">Lily's recital — Mae</span><span class="av" style="background:linear-gradient(150deg,#8fd0c0,#69b6a4)"></span></div>
-          <div class="wcard w3"><span class="t">9:00 AM</span><span class="s">Parent-teacher</span><span class="av" style="background:linear-gradient(150deg,#9fb0e0,#7d8fce)"></span></div>
+          <div class="score">
+            <div class="lbls">
+              <span class="mono-label">CIRCLE SCORE</span>
+              <span class="mono-label" style="opacity:0.65">THIS WEEK · 9</span>
+            </div>
+            <svg width="128" height="122" viewBox="0 0 168 160">
+              <defs>
+                <linearGradient id="lg-arc" gradientUnits="userSpaceOnUse" x1="154" y1="84" x2="84" y2="14">
+                  <stop offset="0%" stop-color="#c2986a"/>
+                  <stop offset="55%" stop-color="#b8811f"/>
+                  <stop offset="100%" stop-color="#b8593a"/>
+                </linearGradient>
+              </defs>
+              <circle cx="84" cy="84" r="78" fill="none" stroke="rgba(42,36,28,0.28)" stroke-width="3"
+                stroke-dasharray="1 7.17" transform="rotate(135 84 84)" opacity="0.5"/>
+              <circle cx="84" cy="84" r="70" fill="none" stroke="#e9e1d1" stroke-width="9"
+                stroke-linecap="round" stroke-dasharray="329.9 439.8" transform="rotate(135 84 84)"/>
+              <circle cx="84" cy="84" r="70" fill="none" stroke="url(#lg-arc)" stroke-width="9"
+                stroke-linecap="round" stroke-dasharray="237.5 439.8" transform="rotate(135 84 84)"/>
+              <circle cx="144.3" cy="48.4" r="4.5" fill="#8a4128" stroke="#fbf7ee" stroke-width="2"/>
+              <text class="num" x="76" y="92" text-anchor="middle">72</text>
+              <text class="pct" x="98" y="92">%</text>
+              <text class="band" x="84" y="108" text-anchor="middle" letter-spacing="1.2">STRONG</text>
+            </svg>
+            <div class="bars">
+              <i style="--h:3px"></i>
+              <i style="--h:9px;--bar:#cfae87"></i>
+              <i style="--h:3px"></i>
+              <i style="--h:14px;--bar:#c39b62"></i>
+              <i style="--h:7px;--bar:#cfae87"></i>
+              <i style="--h:18px;--bar:#b98a45"></i>
+              <i class="today" style="--h:15px"></i>
+            </div>
+          </div>
+          <div class="wcard w1"><span class="t">1:00 PM</span><span class="s">Lunch with Dave</span><span class="av" style="background:linear-gradient(150deg,#d8a3b4,#b87890)"></span></div>
           <div class="meter">
             <div class="row">
               <div>
